@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Hind_Siliguri } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/providers";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages, getLocale } from "next-intl/server";
 
 const hindSiliguri = Hind_Siliguri({
   subsets: ["bengali", "latin"],
@@ -9,12 +11,17 @@ const hindSiliguri = Hind_Siliguri({
   variable: "--font-hind-siliguri",
 });
 
+export const viewport: Viewport = {
+  themeColor: "#1B6B3A",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export const metadata: Metadata = {
   title: "QurbaniSathi — কোরবানি সাথী | Find Qurbani Share Partners",
   description: "Find your Qurbani share partners in your neighborhood. আপনার পাড়ার মানুষের সাথে কোরবানির ভাগ মেলান।",
   manifest: "/manifest.json",
-  themeColor: "#1B6B3A",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
   openGraph: {
     title: "QurbaniSathi — কোরবানি সাথী",
     description: "Find your Qurbani share partners nearby. প্রতিবেশীর সাথে কোরবানির ভাগ মেলান।",
@@ -32,18 +39,23 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="bn" className={hindSiliguri.variable}>
+    <html lang={locale} className={hindSiliguri.variable}>
       <head>
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="font-hind bg-background text-text-primary antialiased">
-        <Providers>{children}</Providers>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <Providers>{children}</Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

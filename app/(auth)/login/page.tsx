@@ -7,9 +7,11 @@ import { supabase } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import Logo from "@/components/ui/Logo";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { useTranslations } from "next-intl";
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations("auth");
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     phone: "",
@@ -22,7 +24,7 @@ export default function LoginPage() {
 
     try {
       const email = `${formData.phone}@qurbanisathi.com`;
-      
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password: formData.password,
@@ -35,11 +37,11 @@ export default function LoginPage() {
         throw error;
       }
 
-      toast.success("লগইন সফল হয়েছে!");
+      toast.success("লগইন সফল হয়েছে!");
       router.push("/dashboard");
     } catch (error: any) {
       console.error("Login error:", error);
-      toast.error(error.message || "লগইন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+      toast.error(error.message || "লগইন করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
     } finally {
       setLoading(false);
     }
@@ -51,11 +53,8 @@ export default function LoginPage() {
         {/* Logo Section */}
         <div className="flex flex-col items-center mb-8 text-center">
           <Logo width={60} height={60} className="scale-110 mb-4" />
-          <p className="text-text-muted text-sm mt-2">
-            Find your Qurbani share partners nearby
-          </p>
-          <p className="text-text-muted text-sm font-medium">
-            কাছের মানুষের সাথে কোরবানির ভাগ মেলান
+          <p className="text-text-muted text-sm font-medium mt-2">
+            {t("tagline")}
           </p>
         </div>
 
@@ -63,7 +62,7 @@ export default function LoginPage() {
           {/* Phone Number */}
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">
-              Phone Number / ফোন নম্বর
+              {t("phone")}
             </label>
             <input
               type="tel"
@@ -78,7 +77,7 @@ export default function LoginPage() {
           {/* Password */}
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">
-              Password / পাসওয়ার্ড
+              {t("password")}
             </label>
             <input
               type="password"
@@ -101,24 +100,24 @@ export default function LoginPage() {
                 <LoadingSpinner size={32} className="!gap-0 !flex-row !text-white" />
               </div>
             ) : (
-              "লগইন করুন"
+              t("login")
             )}
           </button>
         </form>
 
         {/* Footer Links */}
         <div className="mt-6 text-center space-y-4">
-          <Link 
-            href="/forgot-password" 
+          <Link
+            href="/forgot-password"
             className="block text-sm text-primary hover:underline"
           >
-            Forgot password? / পাসওয়ার্ড ভুলে গেছেন?
+            {t("forgot_password")}
           </Link>
           <div className="pt-6 border-t border-border">
             <p className="text-text-muted text-sm">
-              Don't have an account?{" "}
+              {t("no_account")}{" "}
               <Link href="/register" className="text-primary font-semibold hover:underline">
-                Register / নতুন অ্যাকাউন্ট খুলুন
+                {t("register_now")}
               </Link>
             </p>
           </div>

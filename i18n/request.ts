@@ -1,12 +1,15 @@
 import { getRequestConfig } from "next-intl/server";
+import { cookies } from "next/headers";
 
 const locales = ["en", "bn"] as const;
 
-export default getRequestConfig(async ({ locale }) => {
-  const currentLocale = locales.includes(locale as any) ? (locale as string) : "en";
+export default getRequestConfig(async () => {
+  const cookieStore = cookies();
+  const raw = cookieStore.get("locale")?.value;
+  const locale = locales.includes(raw as any) ? (raw as string) : "bn";
 
   return {
-    locale: currentLocale,
-    messages: (await import(`../messages/${currentLocale}.json`)).default
+    locale,
+    messages: (await import(`../messages/${locale}.json`)).default,
   };
 });

@@ -3,16 +3,16 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
-  ArrowLeft, Lock, CheckCircle2, MessageSquare, 
-  Phone, MapPin, Info, Check
+import {
+  ArrowLeft, Lock, CheckCircle2, MessageSquare,
+  Phone, MapPin, Info
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { useTranslations } from "next-intl";
 
-// Dynamic import for Leaflet map to prevent SSR issues
 const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
   ssr: false,
   loading: () => (
@@ -26,10 +26,12 @@ const EID_DATE = process.env.NEXT_PUBLIC_EID_DATE || "2026-05-27";
 
 export default function PostRequestPage() {
   const router = useRouter();
+  const t = useTranslations("post");
+  const tc = useTranslations("common");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  
+
   const [profile, setProfile] = useState<any>(null);
   const [sharesWanted, setSharesWanted] = useState(1);
   const [budget, setBudget] = useState("");
@@ -65,9 +67,9 @@ export default function PostRequestPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!whatsapp.trim() && !phone.trim()) {
-      toast.error("কমপক্ষে একটি যোগাযোগের মাধ্যম দিন (WhatsApp অথবা ফোন)");
+      toast.error(t("contact_required"));
       return;
     }
 
@@ -91,6 +93,7 @@ export default function PostRequestPage() {
           longitude: profile.longitude,
           status: "open",
           expires_at: EID_DATE,
+          show_name: showName,
         });
 
       if (error) throw error;
@@ -100,7 +103,7 @@ export default function PostRequestPage() {
         router.push("/dashboard");
       }, 1500);
     } catch (err: any) {
-      toast.error(err.message || "পোস্ট করতে সমস্যা হয়েছে");
+      toast.error(err.message || "পোস্ট করতে সমস্যা হয়েছে");
       setSubmitting(false);
     }
   };
@@ -119,21 +122,20 @@ export default function PostRequestPage() {
         <div className="bg-white rounded-full p-6 shadow-xl mb-6 scale-110">
           <CheckCircle2 className="w-20 h-20 text-primary" />
         </div>
-        <h1 className="text-3xl font-bold text-text-primary mb-2">Posted!</h1>
-        <p className="text-xl font-medium text-text-muted">পোস্ট হয়েছে!</p>
+        <h1 className="text-3xl font-bold text-text-primary mb-2">{t("success")}</h1>
+        <p className="text-xl font-medium text-text-muted">{t("success_sub")}</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background font-hind pb-10">
-      {/* Header */}
       <div className="bg-white px-4 py-4 flex items-center gap-4 border-b border-border sticky top-0 z-10">
         <button onClick={() => router.back()} className="p-2 hover:bg-background rounded-full transition-colors">
           <ArrowLeft className="w-6 h-6 text-text-primary" />
         </button>
         <h1 className="text-xl font-bold text-text-primary">
-          Post Share Request / শেয়ার পোস্ট করুন
+          {t("title")}
         </h1>
       </div>
 
@@ -141,7 +143,7 @@ export default function PostRequestPage() {
         {/* Field 1: Shares Wanted */}
         <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
           <label className="block text-sm font-bold text-text-primary mb-1 uppercase tracking-wider">
-            How many shares do you want? / আপনি কতটি ভাগ চান?
+            {t("shares_label")}
           </label>
           <div className="flex gap-2 my-6 justify-between">
             {Array.from({ length: 7 }).map((_, i) => {
@@ -156,26 +158,26 @@ export default function PostRequestPage() {
                     disabled={isLast}
                     onClick={() => setSharesWanted(shareNum)}
                     className={`w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center ${
-                      isLast 
-                        ? "border-accent bg-accent/10 text-accent cursor-not-allowed" 
-                        : isSelected 
-                          ? "border-primary bg-primary text-white shadow-md shadow-primary/20" 
+                      isLast
+                        ? "border-accent bg-accent/10 text-accent cursor-not-allowed"
+                        : isSelected
+                          ? "border-primary bg-primary text-white shadow-md shadow-primary/20"
                           : "border-border bg-white text-text-muted hover:border-primary/50"
                     }`}
                   >
                     {isLast ? <Lock className="w-5 h-5" /> : shareNum}
                   </button>
-                  {isLast && <span className="text-[10px] font-bold text-accent">others</span>}
+                  {isLast && <span className="text-[10px] font-bold text-accent">{t("others_label")}</span>}
                 </div>
               );
             })}
           </div>
           <p className="text-center font-bold text-primary mb-2">
-            You want {sharesWanted} shares out of 7 / ৭টির মধ্যে আপনি {sharesWanted} ভাগ চান
+            {t("shares_summary", { count: sharesWanted })}
           </p>
           <div className="flex items-center gap-2 text-xs text-text-muted bg-background p-3 rounded-lg border border-dashed border-border">
             <Info className="w-4 h-4 text-primary" />
-            Maximum 6 shares per person / একজন সর্বোচ্চ ৬ ভাগ নিতে পারবেন
+            {t("shares_max_note")}
           </div>
         </div>
 
@@ -183,7 +185,7 @@ export default function PostRequestPage() {
         <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
           <div>
             <label className="block text-sm font-bold text-text-primary mb-3 uppercase tracking-wider">
-              Your budget (optional) / আপনার বাজেট (ঐচ্ছিক)
+              {t("budget_label")}
             </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-text-muted text-xl">৳</span>
@@ -199,7 +201,7 @@ export default function PostRequestPage() {
 
           <div>
             <label className="block text-sm font-bold text-text-primary mb-3 uppercase tracking-wider">
-              Preferred cow price range (optional) / পছন্দের গরুর দাম (ঐচ্ছিক)
+              {t("price_range_label")}
             </label>
             <div className="grid grid-cols-2 gap-4">
               <div className="relative">
@@ -231,7 +233,7 @@ export default function PostRequestPage() {
           <div>
             <label className="block text-sm font-bold text-text-primary mb-3 uppercase tracking-wider flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-primary" />
-              WhatsApp Number / হোয়াটসঅ্যাপ নম্বর
+              {t("whatsapp_label")}
             </label>
             <input
               type="tel"
@@ -245,7 +247,7 @@ export default function PostRequestPage() {
           <div>
             <label className="block text-sm font-bold text-text-primary mb-3 uppercase tracking-wider flex items-center gap-2">
               <Phone className="w-4 h-4 text-primary" />
-              Phone Number / ফোন নম্বর
+              {t("phone_label")}
             </label>
             <input
               type="tel"
@@ -261,23 +263,23 @@ export default function PostRequestPage() {
         <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <label className="text-sm font-bold text-text-primary uppercase tracking-wider">
-              Location / অবস্থান
+              {t("location_label")}
             </label>
             <Link href="/setup-location" className="text-xs font-bold text-primary hover:underline">
-              Change location
+              {t("change_location")}
             </Link>
           </div>
           <div className="flex gap-4 items-center">
             <div className="w-24 h-24 rounded-xl border border-border flex-shrink-0 overflow-hidden">
               {profile?.latitude && profile?.longitude ? (
-                <LeafletMap 
+                <LeafletMap
                   center={{ lat: profile.latitude, lng: profile.longitude }}
                   markers={[{ lat: profile.latitude, lng: profile.longitude }]}
                   zoom={13}
                 />
               ) : (
                 <div className="w-full h-full bg-background flex items-center justify-center">
-                   <MapPin className="w-6 h-6 text-border" />
+                  <MapPin className="w-6 h-6 text-border" />
                 </div>
               )}
             </div>
@@ -298,18 +300,18 @@ export default function PostRequestPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-bold text-text-primary">
-                {showName ? "Show my name / নাম দেখান" : "Stay anonymous / পরিচয় গোপন রাখুন"}
+                {showName ? t("anon_off") : t("anon_on")}
               </p>
               <p className="text-xs text-text-muted">
-                {showName ? "Your name will be visible to others" : "Only your requested shares will be visible"}
+                {showName ? t("anon_off_sub") : t("anon_on_sub")}
               </p>
             </div>
             <button
               type="button"
               onClick={() => setShowName(!showName)}
-              className={`w-14 h-8 rounded-full transition-all relative ${showName ? 'bg-primary' : 'bg-border'}`}
+              className={`w-14 h-8 rounded-full transition-all relative ${showName ? "bg-primary" : "bg-border"}`}
             >
-              <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all shadow-sm ${showName ? 'left-7' : 'left-1'}`} />
+              <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all shadow-sm ${showName ? "left-7" : "left-1"}`} />
             </button>
           </div>
         </div>
@@ -325,15 +327,12 @@ export default function PostRequestPage() {
               <div className="scale-50">
                 <LoadingSpinner size={32} className="!gap-0 !flex-row !text-white" />
               </div>
-            ) : "Post Request / পোস্ট করুন"}
+            ) : t("submit")}
           </button>
-          
-          <div className="text-center space-y-1">
+
+          <div className="text-center">
             <p className="text-[10px] text-text-muted">
-              This request will automatically expire on Eid ul-Adha (May 27, 2026)
-            </p>
-            <p className="text-[10px] text-text-muted">
-              এই পোস্টটি ঈদুল আযহার দিন (২৭ মে ২০২৬) স্বয়ংক্রিয়ভাবে মেয়াদোত্তীর্ণ হবে
+              {t("expiry_note", { date: tc("eid_date") })}
             </p>
           </div>
         </div>

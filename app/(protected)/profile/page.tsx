@@ -3,14 +3,16 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
-  ArrowLeft, User, Phone, MapPin, Globe, Lock, 
+import {
+  ArrowLeft, User, Phone, MapPin, Globe, Lock,
   LogOut, Check, Edit2, ChevronRight, X
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { useTranslations, useLocale } from "next-intl";
+import { setLocale } from "@/app/actions/locale";
 
 // Dynamic import for Leaflet map to prevent SSR issues
 const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
@@ -24,15 +26,16 @@ const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const tp = useTranslations("profile");
+  const locale = useLocale();
+
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
-  
+
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState("");
   const [updatingName, setUpdatingName] = useState(false);
 
-  const [lang, setLang] = useState("bn");
-  
   const [passwordForm, setPasswordForm] = useState({
     current: "",
     new: "",
@@ -42,8 +45,6 @@ export default function ProfilePage() {
 
   useEffect(() => {
     fetchProfile();
-    const savedLang = localStorage.getItem("language") || "bn";
-    setLang(savedLang);
   }, []);
 
   const fetchProfile = async () => {
@@ -77,9 +78,9 @@ export default function ProfilePage() {
       if (error) throw error;
       setProfile({ ...profile, full_name: newName });
       setIsEditingName(false);
-      toast.success("নাম পরিবর্তন করা হয়েছে");
+      toast.success(tp("name_updated"));
     } catch (err) {
-      toast.error("নাম পরিবর্তন করতে সমস্যা হয়েছে");
+      toast.error("নাম পরিবর্তন করতে সমস্যা হয়েছে");
     } finally {
       setUpdatingName(false);
     }
@@ -97,10 +98,10 @@ export default function ProfilePage() {
         password: passwordForm.new
       });
       if (error) throw error;
-      toast.success("পাসওয়ার্ড পরিবর্তন করা হয়েছে");
+      toast.success(tp("password_updated"));
       setPasswordForm({ current: "", new: "", confirm: "" });
     } catch (err: any) {
-      toast.error(err.message || "পাসওয়ার্ড পরিবর্তন করতে সমস্যা হয়েছে");
+      toast.error(err.message || "পাসওয়ার্ড পরিবর্তন করতে সমস্যা হয়েছে");
     } finally {
       setUpdatingPassword(false);
     }
@@ -111,11 +112,10 @@ export default function ProfilePage() {
     router.push("/");
   };
 
-  const toggleLanguage = () => {
-    const nextLang = lang === "en" ? "bn" : "en";
-    setLang(nextLang);
-    localStorage.setItem("language", nextLang);
-    toast.success(nextLang === "en" ? "Language set to English" : "ভাষা বাংলা করা হয়েছে");
+  const toggleLanguage = async () => {
+    const next = locale === "en" ? "bn" : "en";
+    await setLocale(next);
+    router.refresh();
   };
 
   const maskPhone = (phone: string) => {
@@ -137,7 +137,7 @@ export default function ProfilePage() {
           <ArrowLeft className="w-6 h-6 text-text-primary" />
         </button>
         <h1 className="text-xl font-bold text-text-primary">
-          Profile / প্রোফাইল
+          {tp("title")}
         </h1>
       </div>
 
@@ -148,17 +148,17 @@ export default function ProfilePage() {
             <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center border-4 border-white shadow-md text-3xl font-bold text-primary mb-4">
               {profile.full_name ? profile.full_name[0] : "?"}
             </div>
-            
+
             <div className="w-full text-center">
               {isEditingName ? (
                 <div className="flex items-center gap-2 max-w-xs mx-auto">
-                  <input 
+                  <input
                     className="flex-1 px-3 py-2 border border-border rounded-xl focus:ring-2 focus:ring-primary outline-none"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     autoFocus
                   />
-                  <button 
+                  <button
                     onClick={handleUpdateName}
                     disabled={updatingName}
                     className="p-2 bg-primary text-white rounded-xl"
@@ -176,7 +176,7 @@ export default function ProfilePage() {
               ) : (
                 <div className="flex items-center justify-center gap-2">
                   <h2 className="text-xl font-bold text-text-primary">
-                    {profile.full_name || "Add Name"}
+                    {profile.full_name || tp("add_name")}
                   </h2>
                   <button onClick={() => setIsEditingName(true)} className="p-1 hover:bg-background rounded-lg text-text-muted transition-colors">
                     <Edit2 className="w-4 h-4" />
@@ -194,29 +194,29 @@ export default function ProfilePage() {
         {/* Section 2: Location */}
         <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
           <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-primary" /> Location / অবস্থান
+            <MapPin className="w-4 h-4 text-primary" /> {tp("location_section")}
           </h3>
           <div className="flex gap-4 items-center bg-background p-3 rounded-2xl border border-border">
             <div className="w-20 h-20 rounded-xl flex-shrink-0 overflow-hidden">
               {profile?.latitude && profile?.longitude ? (
-                <LeafletMap 
+                <LeafletMap
                   center={{ lat: profile.latitude, lng: profile.longitude }}
                   markers={[{ lat: profile.latitude, lng: profile.longitude }]}
                   zoom={12}
                 />
               ) : (
                 <div className="w-full h-full bg-white flex items-center justify-center border border-border rounded-xl">
-                   <MapPin className="w-6 h-6 text-border" />
+                  <MapPin className="w-6 h-6 text-border" />
                 </div>
               )}
             </div>
             <div className="flex-1 overflow-hidden">
               <p className="font-bold text-sm text-text-primary truncate">{profile.area_name || "Not set"}</p>
-              <button 
+              <button
                 onClick={() => router.push("/setup-location")}
                 className="mt-2 text-xs font-bold text-primary hover:underline flex items-center gap-1"
               >
-                Update Location <ChevronRight className="w-3 h-3" />
+                {tp("update_location")} <ChevronRight className="w-3 h-3" />
               </button>
             </div>
           </div>
@@ -225,17 +225,17 @@ export default function ProfilePage() {
         {/* Section 3: Language */}
         <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
           <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Globe className="w-4 h-4 text-primary" /> Language / ভাষা
+            <Globe className="w-4 h-4 text-primary" /> {tp("language_section")}
           </h3>
-          <button 
+          <button
             onClick={toggleLanguage}
             className="w-full flex items-center justify-between p-4 bg-background rounded-2xl border border-border hover:border-primary transition-all group"
           >
             <span className="font-bold text-text-primary">
-              {lang === "en" ? "English" : "বাংলা"}
+              {tp(locale === "en" ? "lang_en" : "lang_bn")}
             </span>
-            <div className={`w-14 h-8 rounded-full transition-all relative ${lang === "en" ? "bg-primary" : "bg-accent"}`}>
-               <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all shadow-sm ${lang === "en" ? "left-1" : "left-7"}`} />
+            <div className={`w-14 h-8 rounded-full transition-all relative ${locale === "en" ? "bg-primary" : "bg-accent"}`}>
+              <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all shadow-sm ${locale === "en" ? "left-1" : "left-7"}`} />
             </div>
           </button>
         </div>
@@ -243,26 +243,26 @@ export default function ProfilePage() {
         {/* Section 4: Security */}
         <div className="bg-white rounded-2xl border border-border shadow-sm p-6">
           <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Lock className="w-4 h-4 text-primary" /> Security / নিরাপত্তা
+            <Lock className="w-4 h-4 text-primary" /> {tp("security_section")}
           </h3>
           <form onSubmit={handleUpdatePassword} className="space-y-4">
-            <input 
+            <input
               type="password"
-              placeholder="নতুন পাসওয়ার্ড"
+              placeholder={tp("new_password")}
               className="w-full px-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none"
               value={passwordForm.new}
               onChange={(e) => setPasswordForm({ ...passwordForm, new: e.target.value })}
               required
             />
-            <input 
+            <input
               type="password"
-              placeholder="পাসওয়ার্ড নিশ্চিত করুন"
+              placeholder={tp("confirm_password")}
               className="w-full px-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none"
               value={passwordForm.confirm}
               onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
               required
             />
-            <button 
+            <button
               disabled={updatingPassword}
               className="w-full py-3 bg-background text-text-primary font-bold rounded-xl border border-border hover:bg-border transition-all flex items-center justify-center gap-2 h-12"
             >
@@ -270,17 +270,17 @@ export default function ProfilePage() {
                 <div className="scale-50">
                   <LoadingSpinner size={24} className="!gap-0 !flex-row" />
                 </div>
-              ) : "Change Password"}
+              ) : tp("change_password")}
             </button>
           </form>
         </div>
 
         {/* Section 5: Logout */}
-        <button 
+        <button
           onClick={handleLogout}
           className="w-full py-4 border-2 border-error text-error rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-error/5 transition-all mb-10"
         >
-          <LogOut className="w-5 h-5" /> Logout / লগআউট
+          <LogOut className="w-5 h-5" /> {tp("logout")}
         </button>
       </div>
     </div>

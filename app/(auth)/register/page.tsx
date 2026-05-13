@@ -7,9 +7,11 @@ import { supabase } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import Logo from "@/components/ui/Logo";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { useTranslations } from "next-intl";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const t = useTranslations("auth");
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -26,7 +28,7 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     if (!validatePhone(formData.phone)) {
       toast.error("সঠিক ফোন নম্বর দিন (০১৮XXXXXXXX)");
@@ -49,7 +51,7 @@ export default function RegisterPage() {
 
     try {
       const email = `${formData.phone}@qurbanisathi.com`;
-      
+
       // 1. Create Supabase Auth User
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -62,7 +64,7 @@ export default function RegisterPage() {
       });
 
       if (authError) throw authError;
-      if (!authData.user) throw new Error("নিবন্ধনে সমস্যা হয়েছে");
+      if (!authData.user) throw new Error("নিবন্ধনে সমস্যা হয়েছে");
 
       // 2. Update Profile with extra info
       // Note: The profile row is auto-created by the DB trigger
@@ -77,11 +79,11 @@ export default function RegisterPage() {
 
       if (profileError) throw profileError;
 
-      toast.success("নিবন্ধন সফল হয়েছে!");
+      toast.success("নিবন্ধন সফল হয়েছে!");
       router.push("/setup-location");
     } catch (error: any) {
       console.error("Registration error:", error);
-      toast.error(error.message || "নিবন্ধনে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+      toast.error(error.message || "নিবন্ধনে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
     } finally {
       setLoading(false);
     }
@@ -93,11 +95,8 @@ export default function RegisterPage() {
         {/* Logo Section */}
         <div className="flex flex-col items-center mb-8 text-center">
           <Logo width={60} height={60} className="scale-110 mb-4" />
-          <p className="text-text-muted text-sm mt-2">
-            Find your Qurbani share partners nearby
-          </p>
-          <p className="text-text-muted text-sm font-medium">
-            কাছের মানুষের সাথে কোরবানির ভাগ মেলান
+          <p className="text-text-muted text-sm font-medium mt-2">
+            {t("tagline")}
           </p>
         </div>
 
@@ -105,7 +104,7 @@ export default function RegisterPage() {
           {/* Full Name */}
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">
-              Full Name (ঐচ্ছিক)
+              {t("full_name")}
             </label>
             <input
               type="text"
@@ -119,7 +118,7 @@ export default function RegisterPage() {
           {/* Phone Number */}
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">
-              Phone Number <span className="text-error">*</span>
+              {t("phone")} <span className="text-error">*</span>
             </label>
             <input
               type="tel"
@@ -134,7 +133,7 @@ export default function RegisterPage() {
           {/* Password */}
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">
-              Password <span className="text-error">*</span>
+              {t("password")} <span className="text-error">*</span>
             </label>
             <input
               type="password"
@@ -150,7 +149,7 @@ export default function RegisterPage() {
           {/* Confirm Password */}
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">
-              Confirm Password <span className="text-error">*</span>
+              {t("confirm_password")} <span className="text-error">*</span>
             </label>
             <input
               type="password"
@@ -165,7 +164,7 @@ export default function RegisterPage() {
           {/* Security Question */}
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">
-              Security Question <span className="text-error">*</span>
+              {t("security_question")} <span className="text-error">*</span>
             </label>
             <select
               className="w-full px-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all bg-white"
@@ -182,7 +181,7 @@ export default function RegisterPage() {
           {/* Security Answer */}
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">
-              Security Answer <span className="text-error">*</span>
+              {t("security_answer")} <span className="text-error">*</span>
             </label>
             <input
               type="text"
@@ -205,7 +204,7 @@ export default function RegisterPage() {
                 <LoadingSpinner size={32} className="!gap-0 !flex-row !text-white" />
               </div>
             ) : (
-              "নিবন্ধন করুন"
+              t("register")
             )}
           </button>
         </form>
@@ -213,14 +212,14 @@ export default function RegisterPage() {
         {/* Footer Links */}
         <div className="mt-6 text-center space-y-4">
           <p className="text-text-muted text-sm">
-            Already have an account?{" "}
+            {t("have_account")}{" "}
             <Link href="/login" className="text-primary font-semibold hover:underline">
-              Login
+              {t("login")}
             </Link>
           </p>
           <div className="pt-4 border-t border-border">
             <p className="text-xs text-text-muted italic">
-              "আপনার তথ্য সুরক্ষিত থাকবে" / "Your information is kept private"
+              {t("privacy_note")}
             </p>
           </div>
         </div>

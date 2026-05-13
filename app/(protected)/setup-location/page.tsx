@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { searchAddress, reverseGeocode, MAP_CONFIG } from "@/lib/map";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { useTranslations } from "next-intl";
 
 // Dynamic import for Leaflet map to prevent SSR issues
 const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
@@ -21,11 +22,12 @@ const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
 
 export default function SetupLocationPage() {
   const router = useRouter();
+  const t = useTranslations("location");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [method, setMethod] = useState<"gps" | "search" | "map" | null>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number; area: string } | null>(null);
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
 
@@ -111,7 +113,7 @@ export default function SetupLocationPage() {
 
       if (error) throw error;
 
-      toast.success("Location saved successfully!");
+      toast.success(t("saved"));
       router.push("/dashboard");
     } catch (err: any) {
       toast.error(err.message || "Error saving location");
@@ -126,10 +128,10 @@ export default function SetupLocationPage() {
         {/* Progress Header */}
         <div className="mb-8">
           <p className="text-primary font-bold text-sm uppercase tracking-wider mb-2">
-            Step 2 of 2
+            {t("step")}
           </p>
           <h1 className="text-3xl font-bold text-text-primary">
-            Set Your Location / আপনার অবস্থান ঠিক করুন
+            {t("title")}
           </h1>
           <div className="w-full h-2 bg-border rounded-full mt-4">
             <div className="w-full h-full bg-primary rounded-full" />
@@ -149,8 +151,8 @@ export default function SetupLocationPage() {
               <Navigation className="w-6 h-6 text-primary" />
             </div>
             <div className="text-center">
-              <h3 className="font-bold text-text-primary">Current Location</h3>
-              <p className="text-xs text-text-muted">আমার অবস্থান</p>
+              <h3 className="font-bold text-text-primary">{t("gps_label")}</h3>
+              <p className="text-xs text-text-muted">{t("gps_sub")}</p>
             </div>
           </button>
 
@@ -165,8 +167,8 @@ export default function SetupLocationPage() {
               <Search className="w-6 h-6 text-primary" />
             </div>
             <div className="text-center">
-              <h3 className="font-bold text-text-primary">Search Area</h3>
-              <p className="text-xs text-text-muted">এলাকা খুঁজুন</p>
+              <h3 className="font-bold text-text-primary">{t("search_label")}</h3>
+              <p className="text-xs text-text-muted">{t("search_sub")}</p>
             </div>
           </button>
 
@@ -181,8 +183,8 @@ export default function SetupLocationPage() {
               <MapIcon className="w-6 h-6 text-primary" />
             </div>
             <div className="text-center">
-              <h3 className="font-bold text-text-primary">Drop a Pin</h3>
-              <p className="text-xs text-text-muted">ম্যাপে পিন দিন</p>
+              <h3 className="font-bold text-text-primary">{t("pin_label")}</h3>
+              <p className="text-xs text-text-muted">{t("pin_sub")}</p>
             </div>
           </button>
         </div>
@@ -194,20 +196,19 @@ export default function SetupLocationPage() {
               {loading ? (
                 <>
                   <LoadingSpinner />
-                  <p className="text-text-primary font-medium mt-4">Detecting your location...</p>
-                  <p className="text-text-muted text-sm">আপনার অবস্থান খুঁজে দেখা হচ্ছে...</p>
+                  <p className="text-text-primary font-medium mt-4">{t("detecting")}</p>
                 </>
               ) : location ? (
                 <div className="w-full flex-1">
-                   <div className="mb-4 p-4 bg-primary/10 rounded-xl flex items-center gap-3">
+                  <div className="mb-4 p-4 bg-primary/10 rounded-xl flex items-center gap-3">
                     <CheckCircle2 className="w-6 h-6 text-primary" />
                     <div className="text-left">
-                      <p className="text-xs text-primary font-bold uppercase tracking-tight">Location Detected</p>
+                      <p className="text-xs text-primary font-bold uppercase tracking-tight">{t("detected")}</p>
                       <p className="text-text-primary font-medium line-clamp-1">{location.area}</p>
                     </div>
                   </div>
                   <div className="h-[250px] w-full rounded-xl overflow-hidden border border-border">
-                    <LeafletMap 
+                    <LeafletMap
                       center={{ lat: location.lat, lng: location.lng }}
                       markers={[{ lat: location.lat, lng: location.lng }]}
                       zoom={15}
@@ -226,7 +227,7 @@ export default function SetupLocationPage() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
                 <input
                   type="text"
-                  placeholder="Type area name (e.g. Dhanmondi)..."
+                  placeholder={t("placeholder")}
                   className="w-full pl-12 pr-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all"
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
@@ -247,7 +248,7 @@ export default function SetupLocationPage() {
               </div>
               {location && (
                 <div className="h-[250px] w-full rounded-xl overflow-hidden border border-border">
-                  <LeafletMap 
+                  <LeafletMap
                     center={{ lat: location.lat, lng: location.lng }}
                     markers={[{ lat: location.lat, lng: location.lng }]}
                     zoom={15}
@@ -259,7 +260,7 @@ export default function SetupLocationPage() {
 
           {method === "map" && (
             <div className="flex-1 relative min-h-[400px]">
-              <LeafletMap 
+              <LeafletMap
                 center={location ? { lat: location.lat, lng: location.lng } : MAP_CONFIG.defaultCenter}
                 markers={location ? [{ lat: location.lat, lng: location.lng }] : []}
                 onClick={handleMapClick}
@@ -268,7 +269,7 @@ export default function SetupLocationPage() {
               {!location && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none">
                   <div className="bg-white/90 px-4 py-2 rounded-full text-xs font-bold shadow-md border border-primary/20">
-                    Tap anywhere on the map to set location
+                    {t("tap_hint")}
                   </div>
                 </div>
               )}
@@ -280,7 +281,7 @@ export default function SetupLocationPage() {
             <div className="p-6 bg-background border-t border-border mt-auto">
               <div className="flex flex-col md:flex-row items-center gap-4">
                 <div className="flex-1">
-                  <p className="text-xs text-text-muted font-bold uppercase mb-1">Confirming Location</p>
+                  <p className="text-xs text-text-muted font-bold uppercase mb-1">{t("confirming")}</p>
                   <p className="text-text-primary font-bold line-clamp-1">{location.area}</p>
                 </div>
                 <button
@@ -293,7 +294,7 @@ export default function SetupLocationPage() {
                       <LoadingSpinner size={24} className="!gap-0 !flex-row !text-white" />
                     </div>
                   ) : (
-                    <>Confirm & Continue <ChevronRight className="w-5 h-5" /></>
+                    <>{t("confirm_btn")} <ChevronRight className="w-5 h-5" /></>
                   )}
                 </button>
               </div>
@@ -307,7 +308,7 @@ export default function SetupLocationPage() {
             onClick={() => router.push("/dashboard")}
             className="text-text-muted text-sm hover:text-primary transition-colors hover:underline"
           >
-            Skip for now / আপাতত বাদ দিন
+            {t("skip")}
           </button>
         </div>
       </div>

@@ -7,7 +7,8 @@ import "leaflet/dist/leaflet.css";
 import { MAP_CONFIG } from "@/lib/map";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
-import { Users, Clock, MapPin, LogIn } from "lucide-react";
+import { Users, MapPin, LogIn } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 // Fix Leaflet's broken default icon paths
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -17,7 +18,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: '/leaflet/marker-shadow.png',
 });
 
-// Custom green circular markers
 const createShareMarker = (sharesWanted: number) => L.divIcon({
   html: `<div style="background:#1B6B3A;color:white;width:32px;height:32px;
          border-radius:50%;display:flex;align-items:center;justify-content:center;
@@ -28,7 +28,6 @@ const createShareMarker = (sharesWanted: number) => L.divIcon({
   iconAnchor: [16, 16]
 });
 
-// Gold pulsing user dot
 const userIcon = L.divIcon({
   className: 'user-marker-pulse',
   html: `
@@ -81,6 +80,7 @@ function MapUpdater({ center }: { center: [number, number] }) {
 }
 
 export default function PublicMap({ requests, userPos }: PublicMapProps) {
+  const t = useTranslations("map_page");
   const defaultPos: [number, number] = [MAP_CONFIG.defaultCenter.lat, MAP_CONFIG.defaultCenter.lng];
 
   return (
@@ -95,24 +95,22 @@ export default function PublicMap({ requests, userPos }: PublicMapProps) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {/* User Location and 2km Radius */}
       {userPos && (
         <>
           <Marker position={userPos} icon={userIcon} />
-          <Circle 
-            center={userPos} 
-            radius={2000} 
-            pathOptions={{ color: '#1B6B3A', fillColor: '#1B6B3A', fillOpacity: 0.08 }} 
+          <Circle
+            center={userPos}
+            radius={2000}
+            pathOptions={{ color: '#1B6B3A', fillColor: '#1B6B3A', fillOpacity: 0.08 }}
           />
           <MapUpdater center={userPos} />
         </>
       )}
 
-      {/* Listing Markers */}
       {requests.map((req) => (
-        <Marker 
-          key={req.id} 
-          position={[req.latitude, req.longitude]} 
+        <Marker
+          key={req.id}
+          position={[req.latitude, req.longitude]}
           icon={createShareMarker(req.shares_wanted)}
         >
           <Popup className="custom-popup">
@@ -125,11 +123,11 @@ export default function PublicMap({ requests, userPos }: PublicMapProps) {
                   {formatDistanceToNow(new Date(req.created_at))} ago
                 </span>
               </div>
-              
+
               <div className="space-y-2 py-2 border-y border-border">
                 <div className="flex items-center gap-2 text-sm text-text-primary font-medium">
                   <Users className="w-4 h-4 text-primary" />
-                  {req.shares_wanted} Shares Wanted
+                  {req.shares_wanted} {t("shares_wanted")}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-text-muted">
                   <MapPin className="w-4 h-4 text-primary" />
@@ -139,13 +137,13 @@ export default function PublicMap({ requests, userPos }: PublicMapProps) {
 
               <div className="bg-primary/5 p-3 rounded-xl border border-primary/10 text-center">
                 <p className="text-xs text-text-muted mb-2">
-                  Login to see contact details
+                  {t("login_prompt")}
                 </p>
-                <Link 
-                  href="/login" 
+                <Link
+                  href="/login"
                   className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:bg-opacity-90 transition-all"
                 >
-                  <LogIn className="w-3 h-3" /> Login / লগইন
+                  <LogIn className="w-3 h-3" /> {t("login_btn")}
                 </Link>
               </div>
             </div>
