@@ -1,0 +1,45 @@
+{
+  "common": {
+    "app_name": "QurbaniSathi",
+    "back": "Back",
+    "continue": "Continue",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "retry": "Try again",
+    "not_found": "Page not found",
+    "eid_date": "June 7, 2025"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "phone": "Phone Number",
+    "password": "Password",
+    "forgot_password": "Forgot password?",
+    "no_account": "Don't have an account?",
+    "have_account": "Already have an account?",
+    "register_now": "Register / Create Account",
+    "privacy_note": "Your information is kept private"
+  },
+  "dashboard": {
+    "nearby": "Nearby Requests",
+    "no_requests": "No requests nearby",
+    "post_new": "Post Request",
+    "map": "Map",
+    "my_posts": "My Requests",
+    "messages": "Messages",
+    "profile": "Profile"
+  },
+  "form": {
+    "shares_wanted": "How many shares do you want?",
+    "budget": "Your budget (optional)",
+    "price_range": "Preferred cow price range",
+    "whatsapp": "WhatsApp Number",
+    "location": "Location",
+    "anonymous": "Stay anonymous",
+    "submit_post": "Post Request"
+  }
+}

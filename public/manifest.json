@@ -1,0 +1,13 @@
+{
+  "name": "QurbaniSathi",
+  "short_name": "QurbaniSathi",
+  "description": "Find Qurbani share partners nearby",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFDF5",
+  "theme_color": "#1B6B3A",
+  "icons": [
+    { "src": "/images/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/images/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
