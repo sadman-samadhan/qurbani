@@ -181,5 +181,17 @@
     "contact": "Contact Us",
     "copyright": "© 2026 QurbaniSathi. All rights reserved.",
     "made_with_love": "Made with love for the Muslims of Bangladesh"
+  },
+  "chat": {
+    "title": "Messages",
+    "no_conversations": "No conversations yet",
+    "no_conversations_hint": "Find a listing on the map and send a message to start.",
+    "re_listing": "Re: {shares} shares in {area}",
+    "type_message": "Type a message...",
+    "send": "Send",
+    "listing_expired": "This listing has expired. You can still view the conversation.",
+    "error_send": "Failed to send message",
+    "you": "You",
+    "browse_map": "Browse Map"
   }
 }

@@ -39,6 +39,7 @@ export default function DashboardPage() {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleLangToggle = async () => {
     const next = locale === "en" ? "bn" : "en";
@@ -66,6 +67,14 @@ export default function DashboardPage() {
       setProfile(profile);
       setMapCenter([profile.latitude, profile.longitude]);
       fetchNearby(profile.latitude, profile.longitude);
+
+      // Fetch initial unread count
+      const { count } = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("receiver_id", user.id)
+        .eq("read", false);
+      setUnreadCount(count || 0);
     }
     init();
   }, [router]);
@@ -89,7 +98,7 @@ export default function DashboardPage() {
     }
   };
 
-  // 3. Realtime Subscription
+  // 3. Realtime Subscription — share_requests
   useEffect(() => {
     if (!profile) return;
     const channel = supabase
@@ -100,6 +109,33 @@ export default function DashboardPage() {
         () => {
           fetchNearby(profile.latitude, profile.longitude);
         }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile]);
+
+  // 4. Realtime Subscription — unread message count
+  useEffect(() => {
+    if (!profile) return;
+
+    const refetchUnread = async () => {
+      const { count } = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("receiver_id", profile.id)
+        .eq("read", false);
+      setUnreadCount(count || 0);
+    };
+
+    const channel = supabase
+      .channel("unread_messages")
+      .on(
+        "postgres_changes" as any,
+        { event: "*", schema: "public", table: "messages", filter: `receiver_id=eq.${profile.id}` },
+        refetchUnread
       )
       .subscribe();
 
@@ -192,8 +228,12 @@ export default function DashboardPage() {
         <NavButton icon={<MapIcon />} label={td("map")} active />
         <NavButton icon={<ClipboardList />} label={td("my_posts")} onClick={() => router.push("/my-requests")} />
         <div className="relative group">
-          <NavButton icon={<MessageCircle />} label={td("messages")} disabled />
-          <span className="absolute -top-1 -right-1 bg-accent text-[8px] text-white px-1 rounded-full font-bold uppercase">soon</span>
+          <NavButton icon={<MessageCircle />} label={td("messages")} onClick={() => router.push("/messages")} />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-error text-[8px] text-white px-1.5 py-0.5 rounded-full font-bold min-w-[16px] text-center">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </div>
         <NavButton icon={<User />} label={td("profile")} onClick={() => router.push("/profile")} />
       </div>
@@ -248,27 +288,44 @@ export default function DashboardPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <a
-                  href={`https://wa.me/88${selectedRequest.whatsapp_number || selectedRequest.phone_number}`}
-                  target="_blank"
-                  className="bg-primary text-white py-4 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
-                >
-                  <MessageSquare className="w-5 h-5" /> {tm("whatsapp")}
-                </a>
-                <a
-                  href={`tel:${selectedRequest.phone_number}`}
-                  className="border-2 border-accent text-accent py-4 rounded-2xl flex items-center justify-center gap-2 font-bold hover:bg-accent/5 active:scale-95 transition-all"
-                >
-                  <Phone className="w-5 h-5" /> {tm("call")}
-                </a>
-              </div>
-              <button
-                onClick={() => toast.success(tm("coming_soon"))}
-                className="w-full bg-background text-text-primary py-4 rounded-2xl flex items-center justify-center gap-2 font-bold mb-6 hover:bg-border transition-all"
-              >
-                <MessageCircle className="w-5 h-5" /> {tm("send_message")}
-              </button>
+              {(() => {
+                const hasPhone = selectedRequest.whatsapp_number || selectedRequest.phone_number;
+                const isOwnListing = selectedRequest.user_id === profile?.id;
+                return (
+                  <>
+                    {hasPhone && (
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <a
+                          href={`https://wa.me/88${selectedRequest.whatsapp_number || selectedRequest.phone_number}`}
+                          target="_blank"
+                          className="bg-primary text-white py-4 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                        >
+                          <MessageSquare className="w-5 h-5" /> {tm("whatsapp")}
+                        </a>
+                        <a
+                          href={`tel:${selectedRequest.phone_number}`}
+                          className="border-2 border-accent text-accent py-4 rounded-2xl flex items-center justify-center gap-2 font-bold hover:bg-accent/5 active:scale-95 transition-all"
+                        >
+                          <Phone className="w-5 h-5" /> {tm("call")}
+                        </a>
+                      </div>
+                    )}
+                    {!isOwnListing && (
+                      <button
+                        onClick={() => router.push(`/messages/${selectedRequest.id}/${selectedRequest.user_id}`)}
+                        className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold mb-6 transition-all ${
+                          hasPhone
+                            ? "bg-background text-text-primary hover:bg-border"
+                            : "bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95"
+                        }`}
+                      >
+                        <MessageCircle className="w-5 h-5" /> {tm("send_message")}
+                      </button>
+                    )}
+                    {isOwnListing && hasPhone && <div className="mb-6" />}
+                  </>
+                );
+              })()}
 
               <button className="w-full text-text-muted text-xs flex items-center justify-center gap-1 hover:text-error transition-colors">
                 <AlertCircle className="w-3 h-3" /> {tm("report")}
