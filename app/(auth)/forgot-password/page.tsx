@@ -182,7 +182,11 @@ export default function ForgotPasswordPage() {
               disabled={loading}
               className="w-full bg-primary text-white font-bold py-3 px-4 rounded-xl hover:bg-opacity-90 transition-all flex items-center justify-center gap-2"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify"}
+              {loading ? (
+                <div className="scale-50">
+                  <LoadingSpinner size={32} className="!gap-0 !flex-row !text-white" />
+                </div>
+              ) : "Verify"}
             </button>
             <button
               type="button"
@@ -232,7 +236,11 @@ export default function ForgotPasswordPage() {
               disabled={loading}
               className="w-full bg-primary text-white font-bold py-3 px-4 rounded-xl hover:bg-opacity-90 transition-all flex items-center justify-center gap-2"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Reset Password"}
+              {loading ? (
+                <div className="scale-50">
+                  <LoadingSpinner size={32} className="!gap-0 !flex-row !text-white" />
+                </div>
+              ) : "Reset Password"}
             </button>
           </form>
         )}

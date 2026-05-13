@@ -2,18 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, Search, Navigation, Loader2, CheckCircle2, ChevronRight, Map as MapIcon } from "lucide-react";
+import { MapPin, Search, Navigation, CheckCircle2, ChevronRight, Map as MapIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { searchAddress, reverseGeocode, MAP_CONFIG } from "@/lib/map";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 // Dynamic import for Leaflet map to prevent SSR issues
 const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full bg-background flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      <LoadingSpinner size={24} className="!gap-0" />
     </div>
   ),
 });
@@ -192,8 +193,8 @@ export default function SetupLocationPage() {
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
               {loading ? (
                 <>
-                  <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-                  <p className="text-text-primary font-medium">Detecting your location...</p>
+                  <LoadingSpinner />
+                  <p className="text-text-primary font-medium mt-4">Detecting your location...</p>
                   <p className="text-text-muted text-sm">আপনার অবস্থান খুঁজে দেখা হচ্ছে...</p>
                 </>
               ) : location ? (
@@ -285,9 +286,13 @@ export default function SetupLocationPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="w-full md:w-auto bg-primary text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-opacity-90 transition-all shadow-md shadow-primary/20"
+                  className="w-full md:w-auto bg-primary text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-opacity-90 transition-all shadow-md shadow-primary/20 h-12"
                 >
-                  {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                  {saving ? (
+                    <div className="scale-50">
+                      <LoadingSpinner size={24} className="!gap-0 !flex-row !text-white" />
+                    </div>
+                  ) : (
                     <>Confirm & Continue <ChevronRight className="w-5 h-5" /></>
                   )}
                 </button>

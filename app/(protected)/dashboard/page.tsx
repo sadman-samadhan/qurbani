@@ -131,7 +131,7 @@ export default function DashboardPage() {
     const channel = supabase
       .channel("share_requests_changes")
       .on(
-        "postgres_changes",
+        "postgres_changes" as any,
         { event: "*", table: "share_requests" },
         () => {
           fetchNearby(profile.latitude, profile.longitude);
@@ -198,7 +198,7 @@ export default function DashboardPage() {
                 t={t} 
                 onClick={() => {
                   setSelectedRequest(req);
-                  setMapCenter({ lat: req.latitude, lng: req.longitude });
+                  setMapCenter([req.latitude, req.longitude]);
                 }} 
               />
             ))

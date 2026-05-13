@@ -68,11 +68,17 @@ export default async function AdminReportsPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
-                      <button className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-primary transition-all">
-                        <CheckCircle2 className="w-4 h-4" title="Dismiss" />
+                      <button 
+                        title="Dismiss"
+                        className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-primary transition-all"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
                       </button>
-                      <button className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-rose-600 transition-all">
-                        <Trash2 className="w-4 h-4" title="Delete Listing" />
+                      <button 
+                        title="Delete Listing"
+                        className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-rose-600 transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

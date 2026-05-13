@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   ArrowLeft, CheckCircle2, Trash2, Clock, MapPin, 
-  Plus, Loader2, AlertTriangle, X
+  Plus, AlertTriangle, X
 } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import toast from "react-hot-toast";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export default function MyRequestsPage() {
   const router = useRouter();
@@ -81,7 +82,7 @@ export default function MyRequestsPage() {
       <div className="max-w-xl mx-auto p-4 space-y-4">
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <LoadingSpinner />
           </div>
         ) : requests.length > 0 ? (
           requests.map((req) => (

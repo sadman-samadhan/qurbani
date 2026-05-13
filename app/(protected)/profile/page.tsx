@@ -5,18 +5,19 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   ArrowLeft, User, Phone, MapPin, Globe, Lock, 
-  LogOut, Check, Edit2, Loader2, ChevronRight, X
+  LogOut, Check, Edit2, ChevronRight, X
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 // Dynamic import for Leaflet map to prevent SSR issues
 const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full bg-background flex items-center justify-center">
-      <Loader2 className="w-4 h-4 text-primary animate-spin" />
+      <LoadingSpinner size={24} className="!gap-0" />
     </div>
   ),
 });
@@ -124,7 +125,7 @@ export default function ProfilePage() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      <LoadingSpinner />
     </div>
   );
 
@@ -162,7 +163,11 @@ export default function ProfilePage() {
                     disabled={updatingName}
                     className="p-2 bg-primary text-white rounded-xl"
                   >
-                    {updatingName ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    {updatingName ? (
+                      <div className="scale-50">
+                        <LoadingSpinner size={24} className="!gap-0 !flex-row !text-white" />
+                      </div>
+                    ) : <Check className="w-4 h-4" />}
                   </button>
                   <button onClick={() => setIsEditingName(false)} className="p-2 bg-background rounded-xl">
                     <X className="w-4 h-4 text-text-muted" />
@@ -259,9 +264,13 @@ export default function ProfilePage() {
             />
             <button 
               disabled={updatingPassword}
-              className="w-full py-3 bg-background text-text-primary font-bold rounded-xl border border-border hover:bg-border transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 bg-background text-text-primary font-bold rounded-xl border border-border hover:bg-border transition-all flex items-center justify-center gap-2 h-12"
             >
-              {updatingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : "Change Password"}
+              {updatingPassword ? (
+                <div className="scale-50">
+                  <LoadingSpinner size={24} className="!gap-0 !flex-row" />
+                </div>
+              ) : "Change Password"}
             </button>
           </form>
         </div>

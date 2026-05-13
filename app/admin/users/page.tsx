@@ -80,7 +80,7 @@ export default async function AdminUsersPage({
                       <div>
                         <div className="text-sm font-bold text-text-primary flex items-center gap-1">
                           {user.full_name || "Guest User"}
-                          {user.is_admin && <ShieldCheck className="w-3 h-3 text-primary" title="Admin" />}
+                          {user.is_admin && <ShieldCheck className="w-3 h-3 text-primary" />}
                         </div>
                         <div className="text-xs text-text-muted">{maskPhone(user.phone)}</div>
                       </div>
