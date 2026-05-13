@@ -22,7 +22,7 @@ const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
   ),
 });
 
-const EID_DATE = process.env.NEXT_PUBLIC_EID_DATE || "2025-06-07";
+const EID_DATE = process.env.NEXT_PUBLIC_EID_DATE || "2026-05-27";
 
 export default function PostRequestPage() {
   const router = useRouter();
@@ -330,10 +330,10 @@ export default function PostRequestPage() {
           
           <div className="text-center space-y-1">
             <p className="text-[10px] text-text-muted">
-              This request will automatically expire on Eid ul-Adha (June 7, 2025)
+              This request will automatically expire on Eid ul-Adha (May 27, 2026)
             </p>
             <p className="text-[10px] text-text-muted">
-              এই পোস্টটি ঈদুল আযহার দিন (৭ জুন ২০২৫) স্বয়ংক্রিয়ভাবে মেয়াদোত্তীর্ণ হবে
+              এই পোস্টটি ঈদুল আযহার দিন (২৭ মে ২০২৬) স্বয়ংক্রিয়ভাবে মেয়াদোত্তীর্ণ হবে
             </p>
           </div>
         </div>

@@ -37,7 +37,7 @@ Create a `.env.local` for local development and add these to **Vercel Settings >
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Anon Key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Service Role Key (Server-side only) |
-| `NEXT_PUBLIC_EID_DATE` | Target Eid Date (e.g., `2025-06-07`) |
+| `NEXT_PUBLIC_EID_DATE` | Target Eid Date (e.g., `2026-05-27`) |
 | `CRON_SECRET` | A secret string for securing cron jobs |
 
 #### E. Set First Admin

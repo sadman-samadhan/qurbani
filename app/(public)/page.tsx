@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import Logo from "@/components/ui/Logo";
 
-const EID_DATE = "2025-06-07T00:00:00";
+const EID_DATE = process.env.NEXT_PUBLIC_EID_DATE || "2026-05-27T00:00:00";
 
 export default function LandingPage() {
   const [timeLeft, setTimeLeft] = useState({
@@ -86,7 +86,7 @@ export default function LandingPage() {
           {/* Countdown Timer */}
           <div className="bg-black/20 backdrop-blur-md rounded-3xl p-6 md:p-8 inline-flex flex-col items-center border border-white/10">
             <p className="text-accent text-xs font-bold uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-              <Timer className="w-4 h-4" /> Countdown to Eid-ul-Adha 2025
+              <Timer className="w-4 h-4" /> Countdown to Eid-ul-Adha 2026
             </p>
             <div className="flex gap-4 md:gap-8">
               <TimerUnit value={timeLeft.days} label="Days" />
@@ -191,7 +191,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="pt-12 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs opacity-50">
-            <p>© 2024 QurbaniSathi. All rights reserved.</p>
+            <p>© 2026 QurbaniSathi. All rights reserved.</p>
             <p className="flex items-center gap-1">
               Made with <Heart className="w-3 h-3 text-rose-500 fill-rose-500" /> for the Muslims of Bangladesh
             </p>
