@@ -6,19 +6,22 @@ import { useRouter } from "next/navigation";
 import { 
   Bell, Map as MapIcon, ClipboardList, MessageCircle, User, 
   Plus, Search, Phone, MessageSquare, AlertCircle, MapPin,
-  Clock, Users as UsersIcon, X, Loader2, Globe
+  Clock, Users as UsersIcon, X, Globe
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import toast from "react-hot-toast";
+import Image from "next/image";
+import Logo from "@/components/ui/Logo";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 // Dynamic import for Leaflet map to prevent SSR issues
 const DashboardMap = dynamic(() => import("@/components/map/DashboardMap"), {
   ssr: false,
   loading: () => (
     <div className="h-full bg-gray-100 animate-pulse rounded-xl flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      <LoadingSpinner size={32} />
     </div>
   ),
 });
@@ -145,10 +148,7 @@ export default function DashboardPage() {
     <div className="flex flex-col h-screen bg-background font-hind relative overflow-hidden">
       {/* Top Bar */}
       <div className="bg-white px-4 py-3 flex items-center justify-between border-b border-border z-10">
-        <div className="flex items-center gap-2">
-          <BeefIcon className="w-8 h-8 text-primary" />
-          <span className="font-bold text-xl text-primary">{t.app_name}</span>
-        </div>
+        <Logo width={32} height={32} />
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setLang(lang === "en" ? "bn" : "en")}
@@ -176,14 +176,15 @@ export default function DashboardPage() {
         )}
         {loading && (
           <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-[1000]">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <LoadingSpinner />
           </div>
         )}
       </div>
 
       {/* Nearby Listings Horizontal Scroll */}
       <div className="p-4 overflow-hidden">
-        <h2 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-3">
+        <h2 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+          <Image src="/images/cow.png" alt="" width={16} height={16} className="object-contain" />
           {t.nearby_requests}
         </h2>
         <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">

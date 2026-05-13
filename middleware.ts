@@ -87,9 +87,9 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 3. Auth routes (redirect if already logged in)
-  const authRoutes = ["/login", "/register", "/forgot-password"];
-  if (authRoutes.includes(path) && session) {
+  // 3. Auth routes & Landing page (redirect if already logged in)
+  const redirectIfLoggedIn = ["/login", "/register", "/forgot-password", "/"];
+  if (redirectIfLoggedIn.includes(path) && session) {
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }

@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu
 } from "lucide-react";
+import Logo from "@/components/ui/Logo";
 
 export default async function AdminLayout({
   children,
@@ -34,9 +35,7 @@ export default async function AdminLayout({
       {/* Sidebar - Desktop */}
       <aside className="hidden lg:flex w-64 flex-col bg-[#0F3D22] text-white">
         <div className="p-6">
-          <h1 className="text-xl font-bold tracking-tight text-white/90 flex items-center gap-2">
-            🐄 QurbaniSathi Admin
-          </h1>
+          <Logo className="invert brightness-0" />
         </div>
         
         <nav className="flex-1 px-4 py-2 space-y-1">

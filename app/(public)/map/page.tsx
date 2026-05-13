@@ -2,14 +2,18 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { Home, ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
+import Logo from "@/components/ui/Logo";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 // Dynamic import for Leaflet map to prevent SSR issues
 const PublicMap = dynamic(() => import("@/components/map/PublicMap"), {
   ssr: false,
   loading: () => (
-    <div className="h-full bg-gray-100 animate-pulse rounded-xl flex items-center justify-center">
-      <div className="text-gray-400 font-medium">Loading Map...</div>
+    <div className="h-full bg-background flex flex-col items-center justify-center">
+      <LoadingSpinner />
     </div>
   ),
 });
@@ -46,9 +50,31 @@ export default function PublicMapPage() {
 
   return (
     <div className="relative h-screen w-full font-hind overflow-hidden">
+      {/* Floating Header */}
+      <div className="absolute top-4 left-4 right-4 z-[1000] flex items-center justify-between pointer-events-none">
+        <div className="flex items-center gap-3 pointer-events-auto">
+          <Link 
+            href="/" 
+            className="w-12 h-12 bg-white rounded-2xl shadow-xl border border-border flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all group"
+          >
+            <Home className="w-6 h-6 group-active:scale-90 transition-transform" />
+          </Link>
+          <div className="bg-white/80 backdrop-blur-md px-4 py-2 rounded-2xl border border-border shadow-lg">
+            <Logo width={24} height={24} />
+          </div>
+        </div>
+
+        <div className="pointer-events-auto">
+          <Link 
+            href="/login" 
+            className="px-6 py-3 bg-primary text-white font-bold rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all text-sm"
+          >
+            Login / লগইন
+          </Link>
+        </div>
+      </div>
+
       <PublicMap requests={requests} userPos={userPos} />
-      
-      {/* Overlay UI elements can be added here if needed */}
     </div>
   );
 }

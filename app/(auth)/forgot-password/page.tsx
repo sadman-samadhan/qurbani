@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Beef, Loader2, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
+import Logo from "@/components/ui/Logo";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -114,12 +116,9 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background font-hind">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-warm p-8 border border-border">
         {/* Logo Section */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Beef className="w-8 h-8 text-primary" />
-            <h1 className="text-2xl font-bold text-primary">QurbaniSathi</h1>
-          </div>
-          <p className="text-text-muted text-sm">Reset your password</p>
+        <div className="flex flex-col items-center mb-8 text-center">
+          <Logo width={60} height={60} className="scale-110 mb-4" />
+          <p className="text-text-muted text-sm mt-2">Reset your password</p>
         </div>
 
         {/* Step 1: Phone */}
@@ -146,7 +145,11 @@ export default function ForgotPasswordPage() {
               disabled={loading}
               className="w-full bg-primary text-white font-bold py-3 px-4 rounded-xl hover:bg-opacity-90 transition-all flex items-center justify-center gap-2"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Continue"}
+              {loading ? (
+                <div className="scale-50">
+                  <LoadingSpinner size={32} className="!gap-0 !flex-row !text-white" />
+                </div>
+              ) : "Continue"}
             </button>
           </form>
         )}

@@ -4,19 +4,20 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
-  ArrowLeft, Lock, CheckCircle2, Loader2, MessageSquare, 
+  ArrowLeft, Lock, CheckCircle2, MessageSquare, 
   Phone, MapPin, Info, Check
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 // Dynamic import for Leaflet map to prevent SSR issues
 const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full bg-background flex items-center justify-center">
-      <Loader2 className="w-4 h-4 text-primary animate-spin" />
+      <LoadingSpinner size={24} className="!gap-0" />
     </div>
   ),
 });
@@ -107,7 +108,7 @@ export default function PostRequestPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <LoadingSpinner />
       </div>
     );
   }
@@ -320,7 +321,11 @@ export default function PostRequestPage() {
             disabled={submitting}
             className="w-full bg-primary text-white py-4 rounded-2xl font-bold text-xl shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3"
           >
-            {submitting ? <Loader2 className="w-6 h-6 animate-spin" /> : "Post Request / পোস্ট করুন"}
+            {submitting ? (
+              <div className="scale-50">
+                <LoadingSpinner size={32} className="!gap-0 !flex-row !text-white" />
+              </div>
+            ) : "Post Request / পোস্ট করুন"}
           </button>
           
           <div className="text-center space-y-1">

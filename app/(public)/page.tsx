@@ -6,6 +6,7 @@ import {
   MapPin, Beef, Users, ShieldCheck, Map as MapIcon, 
   MessageSquare, ChevronRight, Timer, Heart 
 } from "lucide-react";
+import Logo from "@/components/ui/Logo";
 
 const EID_DATE = "2025-06-07T00:00:00";
 
@@ -44,7 +45,13 @@ export default function LandingPage() {
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary rounded-full blur-3xl" />
         </div>
 
-        <div className="relative z-10 max-w-4xl">
+        <div className="relative z-10 max-w-4xl flex flex-col items-center">
+          <Logo 
+            width={120} 
+            height={120} 
+            showText={false} 
+            className="mb-6 animate-in zoom-in duration-700" 
+          />
           <h1 className="text-6xl md:text-8xl font-bold mb-4 tracking-tighter animate-in fade-in slide-in-from-top duration-700">
             QurbaniSathi
           </h1>
@@ -160,7 +167,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between gap-12 mb-12">
             <div className="max-w-xs">
-              <h4 className="text-2xl font-bold mb-4">QurbaniSathi</h4>
+              <Logo className="mb-4" />
               <p className="opacity-70 text-sm leading-relaxed">
                 Find your Qurbani share partners in your neighborhood. Connecting the community for a better sacrifice.
               </p>
