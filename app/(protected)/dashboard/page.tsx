@@ -98,7 +98,7 @@ export default function DashboardPage() {
       if (nearbyRes.error) throw nearbyRes.error;
       if (allRes.error) throw allRes.error;
 
-      const filteredNearby = (nearbyRes.data || []).filter(req => req.user_id !== userId);
+      const filteredNearby = (nearbyRes.data || []).filter((req: any) => req.user_id !== userId);
 
       setNearbyRequests(filteredNearby);
       setAllRequests(allRes.data || []);
@@ -393,6 +393,7 @@ function NavButton({ icon, label, active = false, disabled = false, onClick }: a
 }
 
 function RequestCard({ request, onClick }: any) {
+  const router = useRouter();
   const tm = useTranslations("map_page");
 
   return (
