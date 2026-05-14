@@ -188,14 +188,88 @@ This phase focused on refining the dashboard UX, resolving database permission i
   - Updated privacy toggle labels.
   - Generic "Post a new request" CTA (removed "first").
 
-## Files Modified
-```text
-app/(protected)/dashboard/page.tsx        ← Map/Dashboard filtering, z-index fix
-app/(protected)/my-requests/page.tsx       ← Edit button, new post button, RLS fix
-app/(protected)/post-request/page.tsx      ← Privacy toggles, location redirect
-app/(protected)/edit-request/[id]/page.tsx ← New page
-app/(protected)/setup-location/page.tsx    ← Redirection, map tips, pin fix
-messages/en.json                           ← New i18n keys
-messages/bn.json                           ← New i18n keys
-supabase/migrations/001_initial_schema.sql ← Schema & RPC updates
 ```
+
+---
+
+# Join System Implementation (Backend)
+**Date: May 14, 2026**
+
+Implemented the foundation for the collaborative "Join System", allowing users to request to join others' listings and form Qurbani groups.
+
+## Database & Schema (003_join_system.sql)
+- **New Tables**:
+  - `request_members`: Tracks membership status (`pending`, `approved`, `cancelled`) and shares taken.
+  - `join_approvals`: Multi-member voting system where all existing members must approve a new joiner.
+  - `notifications`: Centralized notification system for join requests, approvals, and system messages.
+- **Automated Sync & Logic (Triggers)**:
+  - `sync_shares_filled`: Automatically updates `share_requests.shares_filled` as members are approved.
+  - `check_all_approved`: Server-side logic that auto-approves a joiner once all required votes are 'approved'.
+  - `check_any_rejected`: Instantly cancels a request if any member rejects the applicant.
+- **Row Level Security**: Comprehensive policies ensuring users only see relevant members, approvals, and their own notifications.
+
+## Server-Side Logic (Next.js API Routes)
+- **POST `/api/join-request`**:
+  - Validates capacity and eligibility.
+  - Initializes the voting process by creating `join_approvals` for all current group members (including the owner).
+  - Sends initial notifications to approvers.
+- **POST `/api/join-request/respond`**:
+  - Handles member votes.
+  - Broadcasts notifications to the group and applicant once a consensus (or rejection) is reached.
+  - Uses `SUPABASE_SERVICE_ROLE_KEY` to securely manage multi-user state transitions.
+
+## Realtime Support
+- Enabled Supabase Realtime for `request_members` and `notifications` to power live UI updates.
+
+---
+
+# Join System Expansion & Group Messaging
+**Date: May 14, 2026**
+
+This phase integrated the Join System into the core user experience and introduced "fan-out" messaging for listing groups.
+
+## Dashboard & Join Flow
+- **Member List View**: Listings on the dashboard now show all approved members and their share counts.
+- **Dynamic Join Button**: Replaced static buttons with a multi-state "Join / Pending / Joined" logic.
+- **Join Modal**: Implemented a slide-up numeric selector that respects group capacity (max 7 shares).
+- **Group Capacity Visualization**: Added a 7-box visual to the bottom sheet showing current vs requested shares.
+
+## Advanced Messaging (Fan-out)
+- **POST `/api/listing-message`**:
+  - Implemented a "Group Message" fallback using a fan-out pattern.
+  - Messages sent to a listing thread are now automatically distributed to all approved members and the original owner.
+  - Integrated with the notification system to alert all group members of new activity.
+- **Thread UI Integration**: Updated the message thread page to use the new server-side fan-out logic.
+
+## Logic & Polish
+- **Cancellation API**: Created `/api/join-request/cancel` for applicants to withdraw pending requests.
+- **Notifications Bell**: Added a functional, real-time notification panel to the dashboard top bar.
+- **Approval Page**: Built `/notifications/approve` for members to vote on applicants with a real-time capacity preview.
+- **I18n**: Added comprehensive Bengali translations for all join-related actions and statuses.
+
+
+# Final UI Refinements & Landing Page Updates
+**Date: May 14, 2026**
+
+This phase focused on visual polish, accessibility for returning users, and resolving layout desync issues.
+
+## UI/UX Enhancements
+- **Privacy First (Dashboard)**: Removed the requester's name from the dashboard bottom sheet to focus on the **Area Name** as the primary identifier. This resolves "Anonymous User" display issues and prioritizes listing context.
+- **Layering & Visibility**:
+  - Increased the `z-index` for the **Top Bar**, **Notification Panel**, and **FAB (Post Button)** to ensure they are never overlapped by Leaflet map markers or tooltips.
+  - Standardized the notification panel's z-index to `5000` for consistent accessibility.
+- **Map Clarity**: Updated map markers to display the **total combined shares** (Owner + Approved Members). If an owner wants 3 shares and a member joins with 2, the marker now correctly shows **5**.
+
+## Landing Page Improvements
+- **Quick Login**: Added a bordered **Login button** with backdrop blur directly under the main CTA buttons on the hero section for faster access by returning users.
+- **Feature Messaging**:
+  - Updated the "How it Works" section to highlight **In-app Chat** alongside WhatsApp.
+  - Renamed "Direct WhatsApp contact" feature badge to **"WhatsApp & In-app Chat"** to reflect the platform's enhanced communication tools.
+
+## Localization & Copy
+- Updated `en.json` and `bn.json` with new strings for:
+  - "WhatsApp & In-app Chat" feature descriptions.
+  - Revised "How it Works" steps in both languages.
+
+
+

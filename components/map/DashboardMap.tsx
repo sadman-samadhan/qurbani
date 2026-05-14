@@ -105,7 +105,7 @@ export default function DashboardMap({ requests, userPos, onMarkerClick, center 
         <Marker 
           key={req.id} 
           position={[req.latitude, req.longitude]} 
-          icon={createShareMarker(req.shares_wanted)}
+          icon={createShareMarker((req.shares_wanted || 0) + (req.shares_filled || 0))}
           eventHandlers={{
             click: () => onMarkerClick(req)
           }}

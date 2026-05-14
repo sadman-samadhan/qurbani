@@ -174,11 +174,11 @@
     "step2_title": "Post your share need",
     "step2_desc": "Specify how many shares you want and your budget.",
     "step3_title": "Connect with neighbors",
-    "step3_desc": "Chat directly on WhatsApp to finalize your qurbani partner.",
+    "step3_desc": "Chat via in-app messages or WhatsApp to finalize your qurbani partner.",
     "why_title": "Why QurbaniSathi?",
     "free": "Free to use",
     "radius": "2km radius matching",
-    "whatsapp": "Direct WhatsApp contact",
+    "whatsapp": "WhatsApp & In-app Chat",
     "quick_links": "Quick Links",
     "support": "Support",
     "privacy_policy": "Privacy Policy",
@@ -197,5 +197,20 @@
     "error_send": "Failed to send message",
     "you": "You",
     "browse_map": "Browse Map"
+  },
+  "notifications": {
+    "title": "Join Request",
+    "wants_to_join": "wants to join with {shares} shares",
+    "shares_remaining": "This will leave {shares} shares remaining",
+    "requested_shares": "Requested Shares",
+    "current_members": "Current Members",
+    "no_members": "No members yet (excluding owner)",
+    "approve": "Approve",
+    "reject": "Reject",
+    "already_voted": "You voted to {decision}",
+    "resolved_approved": "This request is already approved",
+    "resolved_rejected": "This request is already rejected",
+    "not_found": "Request Not Found",
+    "not_found_msg": "This join request might have been cancelled or already processed."
   }
 }

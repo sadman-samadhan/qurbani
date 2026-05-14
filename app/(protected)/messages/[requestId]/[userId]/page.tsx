@@ -164,17 +164,15 @@ export default function ThreadPage() {
     };
     setMessages(prev => [...prev, tempMsg]);
 
-    const { error } = await supabase.from("messages").insert({
-      sender_id: currentUserId,
-      receiver_id: otherUserId,
-      request_id: requestId,
-      content,
-      read: false,
+    const res = await fetch("/api/listing-message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ request_id: requestId, content })
     });
 
     setSending(false);
 
-    if (error) {
+    if (!res.ok) {
       setMessages(prev => prev.filter(m => m.id !== tempId));
       toast.error(tc("error_send"));
     }

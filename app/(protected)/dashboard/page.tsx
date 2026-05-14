@@ -4,9 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Bell, Map as MapIcon, ClipboardList, MessageCircle, User,
   Plus, Search, Phone, MessageSquare, AlertCircle, MapPin,
-  Clock, Users as UsersIcon, X, Globe
+  Clock, Users as UsersIcon, X, Globe, UserPlus, CheckCircle2,
+  Map as MapIcon, ClipboardList, MessageCircle, User
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
@@ -15,6 +15,7 @@ import toast from "react-hot-toast";
 import Image from "next/image";
 import Logo from "@/components/ui/Logo";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import NotificationsBell from "@/components/ui/NotificationsBell";
 import { useTranslations, useLocale } from "next-intl";
 import { setLocale } from "@/app/actions/locale";
 
@@ -41,6 +42,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [membership, setMembership] = useState<any>(null);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [joinSharesCount, setJoinSharesCount] = useState(0);
+  const [joiningLoading, setJoiningLoading] = useState(false);
 
   const handleLangToggle = async () => {
     const next = locale === "en" ? "bn" : "en";
@@ -83,11 +88,21 @@ export default function DashboardPage() {
   // 2. Fetch Requests
   const fetchNearby = async (lat: number, lng: number, userId: string) => {
     try {
+      // 1. Fetch my own request to get my_shares
+      const { data: myRequest } = await supabase
+        .from('share_requests')
+        .select('shares_wanted')
+        .eq('user_id', userId)
+        .eq('status', 'open')
+        .maybeSingle();
+
+      // 2. Fetch requests
       const [nearbyRes, allRes] = await Promise.all([
         supabase.rpc("get_nearby_requests", {
           user_lat: lat,
           user_lng: lng,
-          radius_km: 2
+          radius_km: 2,
+          my_shares: myRequest?.shares_wanted || 0
         }),
         supabase
           .from("share_requests")
@@ -98,15 +113,122 @@ export default function DashboardPage() {
       if (nearbyRes.error) throw nearbyRes.error;
       if (allRes.error) throw allRes.error;
 
-      const filteredNearby = (nearbyRes.data || []).filter((req: any) => req.user_id !== userId);
+      const nearbyData = nearbyRes.data || [];
+      const allData = allRes.data || [];
+      const allIds = Array.from(new Set([...nearbyData.map((r: any) => r.id), ...allData.map((r: any) => r.id)]));
 
-      setNearbyRequests(filteredNearby);
-      setAllRequests(allRes.data || []);
+      if (allIds.length > 0) {
+        const [membersRes, myMembershipsRes] = await Promise.all([
+          supabase
+            .from('request_members')
+            .select('request_id, user_id, shares_taken')
+            .in('request_id', allIds)
+            .eq('status', 'approved'),
+          supabase
+            .from('request_members')
+            .select('*')
+            .in('request_id', allIds)
+            .eq('user_id', userId)
+        ]);
+
+        // Fetch profiles for all member user_ids AND all request owner user_ids
+        const ownerUserIds = Array.from(new Set([...nearbyData.map((r: any) => r.user_id), ...allData.map((r: any) => r.user_id)]));
+        const memberUserIds = Array.from(new Set((membersRes.data || []).map((m: any) => m.user_id)));
+        const allProfileIds = Array.from(new Set([...ownerUserIds, ...memberUserIds]));
+
+        const profilesMap: Record<string, any> = {};
+        if (allProfileIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('id, full_name, hide_name')
+            .in('id', allProfileIds);
+          profilesData?.forEach((p: any) => { profilesMap[p.id] = p; });
+        }
+
+        const membersMap: Record<string, any[]> = {};
+        membersRes.data?.forEach((m: any) => {
+          if (!membersMap[m.request_id]) membersMap[m.request_id] = [];
+          const profile = profilesMap[m.user_id];
+          membersMap[m.request_id].push({
+            user_id: m.user_id,
+            shares_taken: m.shares_taken,
+            full_name: profile?.hide_name ? null : profile?.full_name
+          });
+        });
+
+        const myMembershipMap: Record<string, any> = {};
+        myMembershipsRes.data?.forEach(m => {
+          myMembershipMap[m.request_id] = m;
+        });
+
+        const enrich = (req: any) => {
+          const ownerProfile = profilesMap[req.user_id];
+          return {
+            ...req,
+            // full_name: prefer what's already on req (from RPC join), fallback to profiles fetch
+            full_name: req.full_name ?? (ownerProfile?.full_name || null),
+            // hide_name comes from share_requests on both paths; keep it as-is
+            members: membersMap[req.id] || [],
+            myMembership: myMembershipMap[req.id] || null
+          };
+        };
+
+        const enrichedNearby = nearbyData.map(enrich).filter((req: any) => req.user_id !== userId);
+        const enrichedAll = allData.map(enrich);
+
+        setNearbyRequests(enrichedNearby);
+        setAllRequests(enrichedAll);
+      } else {
+        setNearbyRequests([]);
+        setAllRequests([]);
+      }
     } catch (err: any) {
       console.error("Fetch error:", err);
       toast.error("অনুরোধগুলো আনতে সমস্যা হয়েছে");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Check membership when request is selected
+  useEffect(() => {
+    if (!selectedRequest || !profile) {
+      setMembership(null);
+      setShowJoinModal(false);
+      return;
+    }
+    setMembership(selectedRequest.myMembership || null);
+  }, [selectedRequest, profile]);
+
+  const handleJoinRequest = async () => {
+    if (!joinSharesCount || !selectedRequest || !profile) return;
+    setJoiningLoading(true);
+    try {
+      const res = await fetch("/api/join-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          request_id: selectedRequest.id,
+          shares_taken: joinSharesCount
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to join");
+
+      toast.success(
+        data.status === "approved"
+          ? (locale === "en" ? "Joined successfully!" : "সফলভাবে যোগ দেওয়া হয়েছে!")
+          : (locale === "en" ? "Request sent! Waiting for approval." : "অনুরোধ পাঠানো হয়েছে!")
+      );
+      setShowJoinModal(false);
+      setJoinSharesCount(0);
+      setSelectedRequest(null);
+      fetchNearby(profile.latitude, profile.longitude, profile.id);
+    } catch (err: any) {
+      toast.error(err.message || "Something went wrong");
+    } finally {
+      setJoiningLoading(false);
     }
   };
 
@@ -159,7 +281,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col h-screen bg-background font-hind relative overflow-hidden">
       {/* Top Bar */}
-      <div className="bg-white px-4 py-3 flex items-center justify-between border-b border-border z-10">
+      <div className="bg-white px-4 py-3 flex items-center justify-between border-b border-border z-[3000]">
         <Logo width={32} height={32} />
         <div className="flex items-center gap-4">
           <button
@@ -169,7 +291,7 @@ export default function DashboardPage() {
             <Globe className="w-4 h-4" />
             {locale === "en" ? "বাংলা" : "EN"}
           </button>
-          <Bell className="w-6 h-6 text-border cursor-not-allowed" />
+          <NotificationsBell userId={profile?.id} />
         </div>
       </div>
 
@@ -223,7 +345,7 @@ export default function DashboardPage() {
       </div>
 
       {/* FAB */}
-      <div className="absolute bottom-24 right-4 z-20">
+      <div className="absolute bottom-24 right-4 z-[3000]">
         <button
           onClick={() => router.push("/post-request")}
           className="group relative bg-primary text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
@@ -259,17 +381,15 @@ export default function DashboardPage() {
             <div className="overflow-y-auto px-6 pt-2 pb-8">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center border-2 border-primary/20">
-                  <span className="text-2xl font-bold text-primary">
-                    {!selectedRequest.hide_name && selectedRequest.full_name ? selectedRequest.full_name[0] : "?"}
-                  </span>
+                  <MapPin className="w-8 h-8 text-primary" />
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-text-primary">
-                    {!selectedRequest.hide_name && selectedRequest.full_name ? selectedRequest.full_name : tm("anonymous")}
+                    {selectedRequest.area_name}
                   </h3>
                   <div className="flex items-center gap-1 text-text-muted text-sm">
-                    <MapPin className="w-4 h-4" />
-                    {selectedRequest.area_name}
+                    <Clock className="w-4 h-4" />
+                    {formatDistanceToNow(new Date(selectedRequest.created_at))} ago
                   </div>
                 </div>
                 <button
@@ -297,16 +417,109 @@ export default function DashboardPage() {
                   label={tm("posted")}
                   value={`${formatDistanceToNow(new Date(selectedRequest.created_at))} ago`}
                 />
+                <InfoItem
+                  label={locale === "en" ? "Availability" : "উপলব্ধতা"}
+                  value={
+                    (() => {
+                      const ownerShares = selectedRequest.shares_wanted || 0;
+                      const filledShares = selectedRequest.shares_filled || 0;
+                      const remaining = Math.max(0, 7 - ownerShares - filledShares);
+                      return (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-primary font-bold">{remaining} {locale === "en" ? "shares left" : "ভাগ বাকি"}</span>
+                          <div className="flex gap-1">
+                            {Array.from({ length: 7 }).map((_, i) => (
+                              <div
+                                key={i}
+                                className={`w-2.5 h-2.5 rounded-sm ${
+                                  i < ownerShares
+                                    ? "bg-amber-500"  // poster's own shares
+                                    : i < ownerShares + filledShares
+                                    ? "bg-primary"    // member shares
+                                    : "bg-border/50"  // available
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()
+                  }
+                />
+              </div>
+
+              {/* Member List Section */}
+              <div className="mb-6">
+                <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-3">
+                  {locale === "en" ? "Current Members" : "বর্তমান সদস্য"}
+                </p>
+                <div className="flex flex-col gap-2">
+                  {/* Show approved members */}
+                  {selectedRequest.members?.map((member: any) => (
+                    <div key={member.user_id} className="flex items-center justify-between bg-background rounded-xl px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                          {member.full_name?.[0] || "?"}
+                        </div>
+                        <span className="text-sm text-text-primary">
+                          {member.full_name || (locale === "en" ? "Anonymous" : "পরিচয় গোপন")}
+                        </span>
+                      </div>
+                      <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg">
+                        {member.shares_taken} {locale === "en" ? "shares" : "ভাগ"}
+                      </span>
+                    </div>
+                  ))}
+                  {/* Remaining capacity */}
+                  <div className="flex items-center justify-between bg-amber-50 rounded-xl px-3 py-2 border border-dashed border-amber-200">
+                    <span className="text-sm text-amber-700 font-medium">
+                      {locale === "en" ? "Available" : "খালি আছে"}
+                    </span>
+                    <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded-lg">
+                      {Math.max(0, 7 - (selectedRequest.shares_wanted || 0) - (selectedRequest.shares_filled || 0))} {locale === "en" ? "shares" : "ভাগ"}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Action Buttons */}
               {(() => {
                 const hasPhone = !!(selectedRequest.whatsapp_number || selectedRequest.phone_number) && !selectedRequest.hide_phone;
                 const isOwnListing = selectedRequest.user_id === profile?.id;
+                const sharesRemaining = Math.max(0, 7 - (selectedRequest.shares_wanted || 0) - (selectedRequest.shares_filled || 0));
+                const userMembership = membership;
+
                 return (
                   <div className="flex flex-col gap-3 mb-6">
 
-                    {/* WhatsApp + Call — only when contact info exists */}
+                    {/* Join / Status Button */}
+                    {!isOwnListing && (
+                      <div className="mb-2">
+                        {userMembership ? (
+                          <div className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm border-2 ${userMembership.status === "approved"
+                            ? "bg-green-50 border-green-200 text-green-700"
+                            : "bg-amber-50 border-amber-200 text-amber-700"
+                            }`}>
+                            {userMembership.status === "approved" ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                            {userMembership.status === "approved"
+                              ? (locale === "en" ? "Joined Group" : "গ্রুপে যুক্ত আছেন")
+                              : (locale === "en" ? "Join request pending approval..." : "অনুমোদনের অপেক্ষায়...")}
+                          </div>
+                        ) : sharesRemaining > 0 ? (
+                          <button
+                            onClick={() => setShowJoinModal(true)}
+                            className="w-full py-4 rounded-2xl bg-accent text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-accent/20 active:scale-95 transition-all text-sm"
+                          >
+                            <UsersIcon className="w-5 h-5 flex-shrink-0" />
+                            {locale === "en"
+                              ? `Join — ${sharesRemaining} shares left`
+                              : `যোগ দিন — ${sharesRemaining} ভাগ বাকি`}
+                          </button>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {/* WhatsApp + Call */}
                     {hasPhone && (
                       <div className="grid grid-cols-2 gap-3">
                         <a
@@ -328,24 +541,19 @@ export default function DashboardPage() {
                       </div>
                     )}
 
-                    {/* Message button — hidden on own listing */}
-                    {!isOwnListing && (
+                    {/* Message button */}
+                    {!isOwnListing && !userMembership && (
                       <>
-                        {hasPhone && (
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 h-px bg-border" />
-                            <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
-                              {locale === "en" ? "or" : "অথবা"}
-                            </span>
-                            <div className="flex-1 h-px bg-border" />
-                          </div>
-                        )}
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-px bg-border" />
+                          <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
+                            {locale === "en" ? "or" : "অথবা"}
+                          </span>
+                          <div className="flex-1 h-px bg-border" />
+                        </div>
                         <button
                           onClick={() => router.push(`/messages/${selectedRequest.id}/${selectedRequest.user_id}`)}
-                          className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold active:scale-95 transition-all text-sm ${hasPhone
-                            ? "border-2 border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
-                            : "bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02]"
-                            }`}
+                          className="w-full py-4 rounded-2xl border-2 border-primary/30 text-primary bg-primary/5 font-bold active:scale-95 transition-all text-sm flex items-center justify-center gap-2"
                         >
                           <MessageCircle className="w-5 h-5 flex-shrink-0" />
                           {tm("send_message")}
@@ -367,6 +575,65 @@ export default function DashboardPage() {
 
               <button className="w-full text-text-muted text-xs flex items-center justify-center gap-1 hover:text-error transition-colors">
                 <AlertCircle className="w-3 h-3" /> {tm("report")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Join Modal */}
+      {showJoinModal && selectedRequest && (
+        <div className="fixed inset-0 z-[10000] flex items-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowJoinModal(false)} />
+          <div className="relative w-full bg-white rounded-t-[2.5rem] p-6 shadow-2xl animate-in slide-in-from-bottom duration-200">
+            <div className="w-12 h-1.5 bg-border rounded-full mx-auto mb-6" />
+            <h3 className="text-xl font-bold text-text-primary mb-2 text-center">
+              {locale === "en" ? "How many shares do you want?" : "আপনি কতটি ভাগ নিতে চান?"}
+            </h3>
+            <p className="text-sm text-text-muted mb-8 text-center">
+              {locale === "en"
+                ? `Maximum ${Math.max(0, 7 - (selectedRequest.shares_wanted || 0) - (selectedRequest.shares_filled || 0))} shares available`
+                : `সর্বোচ্চ ${Math.max(0, 7 - (selectedRequest.shares_wanted || 0) - (selectedRequest.shares_filled || 0))} ভাগ নেওয়া যাবে`}
+            </p>
+
+            <div className="flex gap-2 mb-10 justify-center">
+              {Array.from({ length: 7 }).map((_, i) => {
+                const sharesRemaining = Math.max(0, 7 - (selectedRequest.shares_wanted || 0) - (selectedRequest.shares_filled || 0));
+                const isAvailable = i < sharesRemaining;
+                const isSelected = i < joinSharesCount;
+                return (
+                  <button
+                    key={i}
+                    disabled={!isAvailable}
+                    onClick={() => isAvailable && setJoinSharesCount(i + 1)}
+                    className={`w-11 h-11 rounded-xl font-bold text-sm transition-all ${isSelected
+                      ? "bg-accent text-white shadow-lg scale-110"
+                      : isAvailable
+                        ? "bg-background text-text-muted border-2 border-border hover:border-accent"
+                        : "bg-border/20 text-border cursor-not-allowed"
+                      }`}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowJoinModal(false)}
+                className="flex-1 py-4 rounded-2xl border-2 border-border text-text-muted font-bold active:scale-95 transition-all"
+              >
+                {locale === "en" ? "Cancel" : "বাতিল"}
+              </button>
+              <button
+                onClick={handleJoinRequest}
+                disabled={joinSharesCount === 0 || joiningLoading}
+                className="flex-[2] py-4 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 disabled:opacity-50 active:scale-95 transition-all flex items-center justify-center"
+              >
+                {joiningLoading
+                  ? <LoadingSpinner size={20} />
+                  : locale === "en" ? "Send Request" : "অনুরোধ পাঠান"}
               </button>
             </div>
           </div>
