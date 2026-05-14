@@ -144,3 +144,58 @@ playwright.config.ts                                 ← new
 - Phase 3 (next-intl) migration is partial — admin pages and some lower-priority routes retain inline translations.
 - PWA install prompt not verified on a physical Android device (Chrome DevTools manifest check only).
 - Realtime tests require Supabase Realtime to be enabled on the `messages` table before running.
+
+
+# Dashboard and Request Management Improvements
+**Date: May 14, 2026**
+
+This phase focused on refining the dashboard UX, resolving database permission issues, and introducing flexible request management (Editing/Privacy).
+
+## Core Improvements
+
+### 1. Dashboard UI/UX & Map Fixes
+- **Z-Index Layering**: Resolved a critical issue where the Leaflet map overlapped the details bottom sheet. The sheet now stays on top of all map controls.
+- **Map Visualization**: Updated the map to display **all open share requests** as markers, providing better visibility of the platform's activity, while keeping the horizontal cards exclusively for **nearby requests** (within 2km).
+- **Location Setup**:
+  - Added a "Location Tip" (English & Bengali) advising users to use approximate locations if their exact point is missing.
+  - Fixed "Drop a Pin" map rendering by ensuring it defaults to the user's current location or Dhaka.
+  - Implemented redirection logic so that changing location from the "Add Request" page returns you to that page instead of the dashboard.
+
+### 2. Request Management (Post/Edit/Fill)
+- **Edit Feature**: Created a dedicated Edit page (`/edit-request/[id]`) allowing users to modify their active listings.
+- **Mark as Filled**: Fixed a `403 Forbidden` error by updating Supabase RLS policies to allow users to update their own requests.
+- **My Requests Page**: Added a prominent, descriptive "Post a new request" button at the bottom of the list to improve discoverability for users with multiple posts.
+- **Smart Filtering**: Filtered the user's own posts out of the "Nearby Requests" horizontal list to prevent redundant entries, while keeping their own pins visible on the map for confirmation.
+
+### 3. Privacy & Anonymity
+- **Consistent Toggles**: Standardized anonymity settings into "Hide my name" and "Hide phone number".
+- **Privacy Defaults**: Both name and phone number are now visible by default (`false`), with explicit "Hide" toggles.
+- **Dynamic Action Buttons**: Dashboard cards now automatically switch the primary contact action from "WhatsApp" to "In-app Chat" if the user has chosen to hide their phone number.
+
+## Database & Infrastructure Updates
+
+### SQL Migrations (Applied manually)
+- **Column Renaming**: Renamed `show_name` to `hide_name` and added `hide_phone` for consistent logic.
+- **RLS Policy Fixes**:
+  - Added a policy to allow users to read their own requests regardless of status (`open`, `filled`, `expired`).
+  - Strengthened `UPDATE` policies to ensure users can transition their posts to "filled" status without permission errors.
+- **RPC Redefinition**: Redefined the `get_nearby_requests` function to explicitly return the new column structure and avoid PostgREST cache issues.
+
+## Internationalization (i18n)
+- Added translations for:
+  - "Edit Post" and "Update" flows.
+  - Location accuracy tips.
+  - Updated privacy toggle labels.
+  - Generic "Post a new request" CTA (removed "first").
+
+## Files Modified
+```text
+app/(protected)/dashboard/page.tsx        ← Map/Dashboard filtering, z-index fix
+app/(protected)/my-requests/page.tsx       ← Edit button, new post button, RLS fix
+app/(protected)/post-request/page.tsx      ← Privacy toggles, location redirect
+app/(protected)/edit-request/[id]/page.tsx ← New page
+app/(protected)/setup-location/page.tsx    ← Redirection, map tips, pin fix
+messages/en.json                           ← New i18n keys
+messages/bn.json                           ← New i18n keys
+supabase/migrations/001_initial_schema.sql ← Schema & RPC updates
+```

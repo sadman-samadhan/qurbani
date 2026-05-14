@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, CheckCircle2, Trash2, Clock, MapPin,
-  Plus, AlertTriangle
+  Plus, AlertTriangle, Pencil
 } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { formatDistanceToNow } from "date-fns";
@@ -72,13 +72,21 @@ export default function MyRequestsPage() {
 
   return (
     <div className="min-h-screen bg-background font-hind pb-10">
-      <div className="bg-white px-4 py-4 flex items-center gap-4 border-b border-border sticky top-0 z-10">
-        <button onClick={() => router.back()} className="p-2 hover:bg-background rounded-full transition-colors">
-          <ArrowLeft className="w-6 h-6 text-text-primary" />
-        </button>
-        <h1 className="text-xl font-bold text-text-primary">
-          {t("title")}
-        </h1>
+      <div className="bg-white px-4 py-4 flex items-center justify-between border-b border-border sticky top-0 z-10">
+        <div className="flex items-center gap-4">
+          <button onClick={() => router.back()} className="p-2 hover:bg-background rounded-full transition-colors">
+            <ArrowLeft className="w-6 h-6 text-text-primary" />
+          </button>
+          <h1 className="text-xl font-bold text-text-primary">
+            {t("title")}
+          </h1>
+        </div>
+        <Link 
+          href="/post-request"
+          className="p-2 bg-primary text-white rounded-xl shadow-md active:scale-95 transition-all"
+        >
+          <Plus className="w-6 h-6" />
+        </Link>
       </div>
 
       <div className="max-w-xl mx-auto p-4 space-y-4">
@@ -87,57 +95,77 @@ export default function MyRequestsPage() {
             <LoadingSpinner />
           </div>
         ) : requests.length > 0 ? (
-          requests.map((req) => (
-            <div key={req.id} className="bg-white rounded-2xl border border-border shadow-sm p-5 relative overflow-hidden">
-              <div className="flex justify-between items-start mb-4">
-                <StatusBadge status={req.status} />
-                <div className="flex items-center gap-1 text-[10px] text-text-muted">
-                  <Clock className="w-3 h-3" />
-                  {formatDistanceToNow(new Date(req.created_at))} ago
-                </div>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div>
-                  <p className="text-xs text-text-muted mb-1">{t("shares")}</p>
-                  <ShareBoxes count={req.shares_wanted} />
-                </div>
-
-                <div className="flex justify-between text-sm">
-                  <div>
-                    <p className="text-[10px] text-text-muted uppercase font-bold">{t("area")}</p>
-                    <p className="font-semibold flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-primary" />
-                      {req.area_name?.split(",")[0]}
-                    </p>
+          <div className="space-y-4">
+            {requests.map((req) => (
+              <div key={req.id} className="bg-white rounded-2xl border border-border shadow-sm p-5 relative overflow-hidden">
+                <div className="flex justify-between items-start mb-4">
+                  <StatusBadge status={req.status} />
+                  <div className="flex items-center gap-1 text-[10px] text-text-muted">
+                    <Clock className="w-3 h-3" />
+                    {formatDistanceToNow(new Date(req.created_at))} ago
                   </div>
-                  {req.budget && (
-                    <div className="text-right">
-                      <p className="text-[10px] text-text-muted uppercase font-bold">{t("budget")}</p>
-                      <p className="font-bold text-primary">৳{req.budget.toLocaleString()}</p>
+                </div>
+
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <p className="text-xs text-text-muted mb-1">{t("shares")}</p>
+                    <ShareBoxes count={req.shares_wanted} />
+                  </div>
+
+                  <div className="flex justify-between text-sm">
+                    <div>
+                      <p className="text-[10px] text-text-muted uppercase font-bold">{t("area")}</p>
+                      <p className="font-semibold flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-primary" />
+                        {req.area_name?.split(",")[0]}
+                      </p>
                     </div>
+                    {req.budget && (
+                      <div className="text-right">
+                        <p className="text-[10px] text-text-muted uppercase font-bold">{t("budget")}</p>
+                        <p className="font-bold text-primary">৳{req.budget.toLocaleString()}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-border">
+                  {req.status === "open" && (
+                    <button
+                      onClick={() => setConfirming({ id: req.id, action: "fill" })}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 border-primary text-primary rounded-xl text-xs font-bold hover:bg-primary/5 transition-all"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> {t("mark_filled")}
+                    </button>
                   )}
+                  <Link
+                    href={`/edit-request/${req.id}`}
+                    className="px-4 py-2 border-2 border-primary text-primary rounded-xl text-xs font-bold hover:bg-primary/5 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Pencil className="w-4 h-4" /> {t("edit")}
+                  </Link>
+                  <button
+                    onClick={() => setConfirming({ id: req.id, action: "delete" })}
+                    className="px-4 py-2 border-2 border-error text-error rounded-xl text-xs font-bold hover:bg-error/5 transition-all"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-
-              <div className="flex gap-3 pt-4 border-t border-border">
-                {req.status === "open" && (
-                  <button
-                    onClick={() => setConfirming({ id: req.id, action: "fill" })}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 border-primary text-primary rounded-xl text-xs font-bold hover:bg-primary/5 transition-all"
-                  >
-                    <CheckCircle2 className="w-4 h-4" /> {t("mark_filled")}
-                  </button>
-                )}
-                <button
-                  onClick={() => setConfirming({ id: req.id, action: "delete" })}
-                  className="px-4 py-2 border-2 border-error text-error rounded-xl text-xs font-bold hover:bg-error/5 transition-all"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+            ))}
+            
+            <div className="pt-6 pb-12">
+              <Link
+                href="/post-request"
+                className="w-full flex items-center justify-center gap-3 py-5 bg-white border-2 border-dashed border-primary/40 text-primary rounded-3xl font-bold hover:bg-primary/5 transition-all group"
+              >
+                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Plus className="w-6 h-6" />
+                </div>
+                <span className="text-lg">{t("empty_cta")}</span>
+              </Link>
             </div>
-          ))
+          </div>
         ) : (
           <div className="py-20 text-center space-y-6">
             <span className="text-6xl block">🐄</span>

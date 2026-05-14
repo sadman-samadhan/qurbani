@@ -35,7 +35,8 @@ export default function DashboardPage() {
   const locale = useLocale();
 
   const [profile, setProfile] = useState<any>(null);
-  const [requests, setRequests] = useState<any[]>([]);
+  const [allRequests, setAllRequests] = useState<any[]>([]);
+  const [nearbyRequests, setNearbyRequests] = useState<any[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
@@ -66,7 +67,7 @@ export default function DashboardPage() {
 
       setProfile(profile);
       setMapCenter([profile.latitude, profile.longitude]);
-      fetchNearby(profile.latitude, profile.longitude);
+      fetchNearby(profile.latitude, profile.longitude, user.id);
 
       // Fetch initial unread count
       const { count } = await supabase
@@ -79,20 +80,31 @@ export default function DashboardPage() {
     init();
   }, [router]);
 
-  // 2. Fetch Nearby Requests
-  const fetchNearby = async (lat: number, lng: number) => {
+  // 2. Fetch Requests
+  const fetchNearby = async (lat: number, lng: number, userId: string) => {
     try {
-      const { data, error } = await supabase.rpc("get_nearby_requests", {
-        user_lat: lat,
-        user_lng: lng,
-        radius_km: 2
-      });
+      const [nearbyRes, allRes] = await Promise.all([
+        supabase.rpc("get_nearby_requests", {
+          user_lat: lat,
+          user_lng: lng,
+          radius_km: 2
+        }),
+        supabase
+          .from("share_requests")
+          .select("*")
+          .eq("status", "open")
+      ]);
 
-      if (error) throw error;
-      setRequests(data || []);
+      if (nearbyRes.error) throw nearbyRes.error;
+      if (allRes.error) throw allRes.error;
+
+      const filteredNearby = (nearbyRes.data || []).filter(req => req.user_id !== userId);
+
+      setNearbyRequests(filteredNearby);
+      setAllRequests(allRes.data || []);
     } catch (err: any) {
       console.error("Fetch error:", err);
-      toast.error("কাছের অনুরোধগুলো আনতে সমস্যা হয়েছে");
+      toast.error("অনুরোধগুলো আনতে সমস্যা হয়েছে");
     } finally {
       setLoading(false);
     }
@@ -107,7 +119,7 @@ export default function DashboardPage() {
         "postgres_changes" as any,
         { event: "*", table: "share_requests" },
         () => {
-          fetchNearby(profile.latitude, profile.longitude);
+          fetchNearby(profile.latitude, profile.longitude, profile.id);
         }
       )
       .subscribe();
@@ -167,7 +179,7 @@ export default function DashboardPage() {
           <DashboardMap
             center={mapCenter}
             userPos={[profile.latitude, profile.longitude]}
-            requests={requests}
+            requests={allRequests}
             onMarkerClick={(req) => {
               setSelectedRequest(req);
               setMapCenter([req.latitude, req.longitude]);
@@ -190,8 +202,8 @@ export default function DashboardPage() {
         <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
           {loading ? (
             [1, 2, 3].map(i => <SkeletonCard key={i} />)
-          ) : requests.length > 0 ? (
-            requests.map(req => (
+          ) : nearbyRequests.length > 0 ? (
+            nearbyRequests.map(req => (
               <RequestCard
                 key={req.id}
                 request={req}
@@ -240,20 +252,20 @@ export default function DashboardPage() {
 
       {/* Bottom Sheet Details */}
       {selectedRequest && (
-        <div className="fixed inset-0 z-50 pointer-events-none">
+        <div className="fixed inset-0 z-[9999] pointer-events-none">
           <div className="absolute inset-0 bg-black/20 pointer-events-auto" onClick={() => setSelectedRequest(null)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[2.5rem] shadow-2xl animate-in slide-in-from-bottom duration-300 pointer-events-auto max-h-[70vh] flex flex-col">
-            <div className="w-12 h-1.5 bg-border rounded-full mx-auto my-4" />
-            <div className="overflow-y-auto px-6 pb-8">
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[2.5rem] shadow-2xl animate-in slide-in-from-bottom duration-300 pointer-events-auto max-h-[85vh] flex flex-col">
+            <div className="w-12 h-1.5 bg-border rounded-full mx-auto my-4 flex-shrink-0" />
+            <div className="overflow-y-auto px-6 pt-2 pb-8">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center border-2 border-primary/20">
                   <span className="text-2xl font-bold text-primary">
-                    {selectedRequest.show_name && selectedRequest.full_name ? selectedRequest.full_name[0] : "?"}
+                    {!selectedRequest.hide_name && selectedRequest.full_name ? selectedRequest.full_name[0] : "?"}
                   </span>
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-text-primary">
-                    {selectedRequest.show_name && selectedRequest.full_name ? selectedRequest.full_name : tm("anonymous")}
+                    {!selectedRequest.hide_name && selectedRequest.full_name ? selectedRequest.full_name : tm("anonymous")}
                   </h3>
                   <div className="flex items-center gap-1 text-text-muted text-sm">
                     <MapPin className="w-4 h-4" />
@@ -289,41 +301,67 @@ export default function DashboardPage() {
 
               {/* Action Buttons */}
               {(() => {
-                const hasPhone = selectedRequest.whatsapp_number || selectedRequest.phone_number;
+                const hasPhone = !!(selectedRequest.whatsapp_number || selectedRequest.phone_number) && !selectedRequest.hide_phone;
                 const isOwnListing = selectedRequest.user_id === profile?.id;
                 return (
-                  <>
+                  <div className="flex flex-col gap-3 mb-6">
+
+                    {/* WhatsApp + Call — only when contact info exists */}
                     {hasPhone && (
-                      <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="grid grid-cols-2 gap-3">
                         <a
                           href={`https://wa.me/88${selectedRequest.whatsapp_number || selectedRequest.phone_number}`}
                           target="_blank"
-                          className="bg-primary text-white py-4 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                          rel="noopener noreferrer"
+                          className="bg-primary text-white py-4 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-primary/20 active:scale-95 transition-all text-sm"
                         >
-                          <MessageSquare className="w-5 h-5" /> {tm("whatsapp")}
+                          <MessageSquare className="w-5 h-5 flex-shrink-0" />
+                          {tm("whatsapp")}
                         </a>
                         <a
-                          href={`tel:${selectedRequest.phone_number}`}
-                          className="border-2 border-accent text-accent py-4 rounded-2xl flex items-center justify-center gap-2 font-bold hover:bg-accent/5 active:scale-95 transition-all"
+                          href={`tel:${selectedRequest.phone_number || selectedRequest.whatsapp_number}`}
+                          className="border-2 border-accent text-accent py-4 rounded-2xl flex items-center justify-center gap-2 font-bold active:scale-95 transition-all text-sm"
                         >
-                          <Phone className="w-5 h-5" /> {tm("call")}
+                          <Phone className="w-5 h-5 flex-shrink-0" />
+                          {tm("call")}
                         </a>
                       </div>
                     )}
+
+                    {/* Message button — hidden on own listing */}
                     {!isOwnListing && (
-                      <button
-                        onClick={() => router.push(`/messages/${selectedRequest.id}/${selectedRequest.user_id}`)}
-                        className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold mb-6 transition-all ${
-                          hasPhone
-                            ? "bg-background text-text-primary hover:bg-border"
-                            : "bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95"
-                        }`}
-                      >
-                        <MessageCircle className="w-5 h-5" /> {tm("send_message")}
-                      </button>
+                      <>
+                        {hasPhone && (
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 h-px bg-border" />
+                            <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
+                              {locale === "en" ? "or" : "অথবা"}
+                            </span>
+                            <div className="flex-1 h-px bg-border" />
+                          </div>
+                        )}
+                        <button
+                          onClick={() => router.push(`/messages/${selectedRequest.id}/${selectedRequest.user_id}`)}
+                          className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold active:scale-95 transition-all text-sm ${hasPhone
+                            ? "border-2 border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
+                            : "bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02]"
+                            }`}
+                        >
+                          <MessageCircle className="w-5 h-5 flex-shrink-0" />
+                          {tm("send_message")}
+                        </button>
+                      </>
                     )}
-                    {isOwnListing && hasPhone && <div className="mb-6" />}
-                  </>
+
+                    {/* Own listing indicator */}
+                    {isOwnListing && (
+                      <div className="w-full py-3 rounded-2xl bg-background border border-dashed border-border flex items-center justify-center gap-2 text-text-muted text-sm">
+                        <UsersIcon className="w-4 h-4 flex-shrink-0" />
+                        {locale === "en" ? "This is your listing" : "এটি আপনার পোস্ট"}
+                      </div>
+                    )}
+
+                  </div>
                 );
               })()}
 
@@ -343,9 +381,8 @@ function NavButton({ icon, label, active = false, disabled = false, onClick }: a
     <button
       disabled={disabled}
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 transition-colors ${
-        active ? "text-primary" : "text-text-muted hover:text-primary"
-      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+      className={`flex flex-col items-center gap-1 transition-colors ${active ? "text-primary" : "text-text-muted hover:text-primary"
+        } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
     >
       <div className={`p-1.5 rounded-xl transition-all ${active ? "bg-primary/10" : ""}`}>
         {icon}
@@ -386,11 +423,15 @@ function RequestCard({ request, onClick }: any) {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            window.open(`https://wa.me/88${request.whatsapp_number || request.phone_number}`, "_blank");
+            if (request.hide_phone) {
+              router.push(`/messages/${request.id}/${request.user_id}`);
+            } else {
+              window.open(`https://wa.me/88${request.whatsapp_number || request.phone_number}`, "_blank");
+            }
           }}
           className="bg-primary text-white p-2 rounded-xl"
         >
-          <MessageSquare className="w-4 h-4" />
+          {request.hide_phone ? <MessageCircle className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
         </button>
       </div>
     </div>
@@ -403,9 +444,8 @@ function ShareBoxes({ count, mini = false }: { count: number, mini?: boolean }) 
       {Array.from({ length: 7 }).map((_, i) => (
         <div
           key={i}
-          className={`rounded-sm ${mini ? "w-2.5 h-2.5" : "w-4 h-4"} ${
-            i < count ? "bg-primary shadow-sm" : "bg-border/50"
-          }`}
+          className={`rounded-sm ${mini ? "w-2.5 h-2.5" : "w-4 h-4"} ${i < count ? "bg-primary shadow-sm" : "bg-border/50"
+            }`}
         />
       ))}
     </div>

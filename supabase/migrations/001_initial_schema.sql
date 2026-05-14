@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS public.share_requests (
   latitude FLOAT8 NOT NULL,
   longitude FLOAT8 NOT NULL,
   status TEXT DEFAULT 'open' CHECK (status IN ('open', 'filled', 'expired')),
+  hide_name BOOLEAN DEFAULT FALSE,
+  hide_phone BOOLEAN DEFAULT FALSE,
   expires_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -100,12 +102,45 @@ CREATE OR REPLACE FUNCTION get_nearby_requests(
   user_lng float,
   radius_km float DEFAULT 2
 )
-RETURNS SETOF public.share_requests
+RETURNS TABLE (
+  id UUID,
+  user_id UUID,
+  shares_wanted INT,
+  budget INT,
+  cow_price_min INT,
+  cow_price_max INT,
+  whatsapp_number TEXT,
+  phone_number TEXT,
+  area_name TEXT,
+  latitude FLOAT8,
+  longitude FLOAT8,
+  status TEXT,
+  hide_name BOOLEAN,
+  hide_phone BOOLEAN,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ,
+  full_name TEXT
+)
 LANGUAGE sql
 STABLE
 AS $$
   SELECT 
-    sr.*,
+    sr.id,
+    sr.user_id,
+    sr.shares_wanted,
+    sr.budget,
+    sr.cow_price_min,
+    sr.cow_price_max,
+    sr.whatsapp_number,
+    sr.phone_number,
+    sr.area_name,
+    sr.latitude,
+    sr.longitude,
+    sr.status,
+    sr.hide_name,
+    sr.hide_phone,
+    sr.expires_at,
+    sr.created_at,
     p.full_name
   FROM public.share_requests sr
   LEFT JOIN public.profiles p ON sr.user_id = p.id
