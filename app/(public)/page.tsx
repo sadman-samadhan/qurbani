@@ -42,9 +42,13 @@ export default function LandingPage() {
     <div className="min-h-screen font-hind bg-white overflow-x-hidden">
       {/* Hero Section */}
       <section className="relative min-h-[90vh] bg-gradient-to-br from-[#1B6B3A] to-[#0F3D22] text-white flex flex-col items-center justify-center px-6 pt-20 pb-32 text-center overflow-hidden">
-        <div className="absolute inset-0 opacity-10 pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-accent rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary rounded-full blur-3xl" />
+        <div className="absolute inset-0 pointer-events-none">
+          <img 
+            src="/images/city.png" 
+            alt="" 
+            className="w-full h-full object-cover opacity-20"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#1B6B3A]/60 to-[#0F3D22]/80" />
         </div>
 
         <div className="relative z-10 max-w-4xl flex flex-col items-center">
@@ -70,18 +74,27 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <Link
-              href="/register"
-              className="w-full sm:w-auto px-10 py-4 bg-accent text-[#0F3D22] font-bold rounded-2xl text-lg hover:scale-105 active:scale-95 transition-all shadow-xl shadow-accent/20"
+          <div className="flex flex-col items-center justify-center gap-8 mb-16 w-full">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full px-6 md:px-0">
+              <Link
+                href="/register"
+                className="w-full sm:w-auto px-10 py-4 bg-accent text-[#0F3D22] font-bold rounded-2xl text-lg hover:scale-105 active:scale-95 transition-all shadow-xl shadow-accent/20"
+              >
+                {t("register_cta")}
+              </Link>
+              <Link
+                href="/map"
+                className="w-full sm:w-auto px-10 py-4 border-2 border-white/30 text-white font-bold rounded-2xl text-lg hover:bg-white/10 transition-all backdrop-blur-sm"
+              >
+                {t("browse_map")}
+              </Link>
+            </div>
+            <Link 
+              href="/login" 
+              className="text-white/80 hover:text-accent font-bold text-lg transition-all group flex items-center gap-2 border-2 border-white/30 hover:border-accent/50 px-10 py-3 rounded-2xl backdrop-blur-sm"
             >
-              {t("register_cta")}
-            </Link>
-            <Link
-              href="/map"
-              className="w-full sm:w-auto px-10 py-4 border-2 border-white/30 text-white font-bold rounded-2xl text-lg hover:bg-white/10 transition-all backdrop-blur-sm"
-            >
-              {t("browse_map")}
+              {ta("login")}
+              <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
 

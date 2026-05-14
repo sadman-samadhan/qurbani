@@ -22,6 +22,10 @@ export const metadata: Metadata = {
   title: "QurbaniSathi — কোরবানি সাথী | Find Qurbani Share Partners",
   description: "Find your Qurbani share partners in your neighborhood. আপনার পাড়ার মানুষের সাথে কোরবানির ভাগ মেলান।",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/images/logo.png",
+    apple: "/images/logo.png",
+  },
   openGraph: {
     title: "QurbaniSathi — কোরবানি সাথী",
     description: "Find your Qurbani share partners nearby. প্রতিবেশীর সাথে কোরবানির ভাগ মেলান।",

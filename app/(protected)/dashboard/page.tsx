@@ -259,17 +259,15 @@ export default function DashboardPage() {
             <div className="overflow-y-auto px-6 pt-2 pb-8">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center border-2 border-primary/20">
-                  <span className="text-2xl font-bold text-primary">
-                    {!selectedRequest.hide_name && selectedRequest.full_name ? selectedRequest.full_name[0] : "?"}
-                  </span>
+                  <MapPin className="w-8 h-8 text-primary" />
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-text-primary">
-                    {!selectedRequest.hide_name && selectedRequest.full_name ? selectedRequest.full_name : tm("anonymous")}
+                    {selectedRequest.area_name}
                   </h3>
                   <div className="flex items-center gap-1 text-text-muted text-sm">
-                    <MapPin className="w-4 h-4" />
-                    {selectedRequest.area_name}
+                    <Clock className="w-4 h-4" />
+                    {formatDistanceToNow(new Date(selectedRequest.created_at))} ago
                   </div>
                 </div>
                 <button
@@ -292,10 +290,6 @@ export default function DashboardPage() {
                 <InfoItem
                   label={tm("cow_price")}
                   value={selectedRequest.cow_price_min ? `৳${selectedRequest.cow_price_min.toLocaleString()} - ৳${selectedRequest.cow_price_max.toLocaleString()}` : tm("not_specified")}
-                />
-                <InfoItem
-                  label={tm("posted")}
-                  value={`${formatDistanceToNow(new Date(selectedRequest.created_at))} ago`}
                 />
               </div>
 
