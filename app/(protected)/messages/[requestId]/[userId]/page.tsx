@@ -223,9 +223,24 @@ export default function ThreadPage() {
 
       {/* Expired listing banner */}
       {listingExpired && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-          <p className="text-xs text-amber-700">{tc("listing_expired")}</p>
+        <div className="bg-amber-50 border-b-2 border-amber-200 px-4 py-3">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="w-4 h-4 text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-amber-800 leading-tight">
+                {locale === "en"
+                  ? "This listing is no longer active"
+                  : "এই পোস্টটি আর সক্রিয় নেই"}
+              </p>
+              <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
+                {locale === "en"
+                  ? "The share request was filled or expired — but you can still continue this conversation."
+                  : "এই শেয়ার অনুরোধটি পূর্ণ হয়েছে বা মেয়াদ শেষ — তবে কথোপকথন চালিয়ে যেতে পারবেন।"}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 

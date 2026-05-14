@@ -8,7 +8,8 @@ import { supabase } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import { searchAddress, reverseGeocode, MAP_CONFIG } from "@/lib/map";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { useSearchParams } from "next/navigation";
 
 // Dynamic import for Leaflet map to prevent SSR issues
 const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
@@ -23,6 +24,10 @@ const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
 export default function SetupLocationPage() {
   const router = useRouter();
   const t = useTranslations("location");
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/dashboard";
+  const locale = useLocale();
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [method, setMethod] = useState<"gps" | "search" | "map" | null>(null);
@@ -30,6 +35,24 @@ export default function SetupLocationPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [profileLocation, setProfileLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    async function getProfile() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("latitude, longitude")
+          .eq("id", user.id)
+          .single();
+        if (profile?.latitude && profile?.longitude) {
+          setProfileLocation({ lat: profile.latitude, lng: profile.longitude });
+        }
+      }
+    }
+    getProfile();
+  }, []);
 
   const handleMapClick = async (lat: number, lng: number) => {
     updateLocationFromCoords(lat, lng);
@@ -114,7 +137,7 @@ export default function SetupLocationPage() {
       if (error) throw error;
 
       toast.success(t("saved"));
-      router.push("/dashboard");
+      router.push(redirect);
     } catch (err: any) {
       toast.error(err.message || "Error saving location");
     } finally {
@@ -135,6 +158,17 @@ export default function SetupLocationPage() {
           </h1>
           <div className="w-full h-2 bg-border rounded-full mt-4">
             <div className="w-full h-full bg-primary rounded-full" />
+          </div>
+
+          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <MapPin className="w-4 h-4 text-amber-600" />
+            </div>
+            <p className="text-xs text-amber-800 leading-relaxed">
+              {locale === "en" 
+                ? "Tip: If your exact location is not found, please use an approximate location or nearby landmark."
+                : "পরামর্শ: আপনার সঠিক অবস্থান পাওয়া না গেলে, নিকটস্থ কোনো পরিচিত স্থানের অবস্থান ব্যবহার করুন।"}
+            </p>
           </div>
         </div>
 
@@ -261,14 +295,14 @@ export default function SetupLocationPage() {
           {method === "map" && (
             <div className="flex-1 relative min-h-[400px]">
               <LeafletMap
-                center={location ? { lat: location.lat, lng: location.lng } : MAP_CONFIG.defaultCenter}
+                center={location ? { lat: location.lat, lng: location.lng } : (profileLocation || MAP_CONFIG.defaultCenter)}
                 markers={location ? [{ lat: location.lat, lng: location.lng }] : []}
                 onClick={handleMapClick}
                 zoom={13}
               />
               {!location && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none">
-                  <div className="bg-white/90 px-4 py-2 rounded-full text-xs font-bold shadow-md border border-primary/20">
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none w-[80%]">
+                  <div className="bg-white/90 px-4 py-3 rounded-2xl text-xs font-bold shadow-lg border border-primary/20 text-center text-primary animate-bounce">
                     {t("tap_hint")}
                   </div>
                 </div>
@@ -305,7 +339,7 @@ export default function SetupLocationPage() {
         {/* Skip Link */}
         <div className="mt-8 text-center">
           <button
-            onClick={() => router.push("/dashboard")}
+            onClick={() => router.push(redirect)}
             className="text-text-muted text-sm hover:text-primary transition-colors hover:underline"
           >
             {t("skip")}

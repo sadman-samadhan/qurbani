@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Lock, CheckCircle2, MessageSquare,
-  Phone, MapPin, Info
+  Phone, MapPin, Info, Pencil
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
@@ -24,8 +24,9 @@ const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
 
 const EID_DATE = process.env.NEXT_PUBLIC_EID_DATE || "2026-05-27";
 
-export default function PostRequestPage() {
+export default function EditRequestPage() {
   const router = useRouter();
+  const { id } = useParams();
   const t = useTranslations("post");
   const tc = useTranslations("common");
   const [loading, setLoading] = useState(true);
@@ -43,28 +44,51 @@ export default function PostRequestPage() {
   const [hidePhone, setHidePhone] = useState(false);
 
   useEffect(() => {
-    async function getProfile() {
+    async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push("/login");
         return;
       }
 
-      const { data: profile } = await supabase
+      // Fetch Profile
+      const { data: profileData } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .single();
 
-      if (profile) {
-        setProfile(profile);
-        setWhatsapp(profile.phone || "");
-        setPhone(profile.phone || "");
+      if (profileData) {
+        setProfile(profileData);
       }
+
+      // Fetch existing request
+      const { data: request, error } = await supabase
+        .from("share_requests")
+        .select("*")
+        .eq("id", id)
+        .eq("user_id", user.id) // Security check
+        .single();
+
+      if (error || !request) {
+        toast.error("Post not found");
+        router.push("/my-requests");
+        return;
+      }
+
+      setSharesWanted(request.shares_wanted);
+      setBudget(request.budget?.toString() || "");
+      setMinPrice(request.cow_price_min?.toString() || "");
+      setMaxPrice(request.cow_price_max?.toString() || "");
+      setWhatsapp(request.whatsapp_number || "");
+      setPhone(request.phone_number || "");
+      setHideName(request.hide_name || false);
+      setHidePhone(request.hide_phone || false);
+      
       setLoading(false);
     }
-    getProfile();
-  }, [router]);
+    fetchData();
+  }, [id, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,31 +105,27 @@ export default function PostRequestPage() {
 
       const { error } = await supabase
         .from("share_requests")
-        .insert({
-          user_id: user.id,
+        .update({
           shares_wanted: sharesWanted,
           budget: budget ? parseInt(budget) : null,
           cow_price_min: minPrice ? parseInt(minPrice) : null,
           cow_price_max: maxPrice ? parseInt(maxPrice) : null,
           whatsapp_number: whatsapp,
           phone_number: phone,
-          area_name: profile.area_name,
-          latitude: profile.latitude,
-          longitude: profile.longitude,
-          status: "open",
-          expires_at: EID_DATE,
           hide_name: hideName,
           hide_phone: hidePhone,
-        });
+        })
+        .eq("id", id)
+        .eq("user_id", user.id);
 
       if (error) throw error;
 
       setIsSuccess(true);
       setTimeout(() => {
-        router.push("/dashboard");
+        router.push("/my-requests");
       }, 1500);
     } catch (err: any) {
-      toast.error(err.message || "পোস্ট করতে সমস্যা হয়েছে");
+      toast.error(err.message || "আপডেট করতে সমস্যা হয়েছে");
       setSubmitting(false);
     }
   };
@@ -124,8 +144,8 @@ export default function PostRequestPage() {
         <div className="bg-white rounded-full p-6 shadow-xl mb-6 scale-110">
           <CheckCircle2 className="w-20 h-20 text-primary" />
         </div>
-        <h1 className="text-3xl font-bold text-text-primary mb-2">{t("success")}</h1>
-        <p className="text-xl font-medium text-text-muted">{t("success_sub")}</p>
+        <h1 className="text-3xl font-bold text-text-primary mb-2">{tc("success")}</h1>
+        <p className="text-xl font-medium text-text-muted">{t("update_success") || "Post updated!"}</p>
       </div>
     );
   }
@@ -137,7 +157,7 @@ export default function PostRequestPage() {
           <ArrowLeft className="w-6 h-6 text-text-primary" />
         </button>
         <h1 className="text-xl font-bold text-text-primary">
-          {t("title")}
+          {t("edit_title")}
         </h1>
       </div>
 
@@ -261,15 +281,12 @@ export default function PostRequestPage() {
           </div>
         </div>
 
-        {/* Field 6: Location */}
-        <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
+        {/* Field 6: Location (Read Only in Edit for now) */}
+        <div className="bg-white p-6 rounded-2xl border border-border shadow-sm opacity-80">
           <div className="flex justify-between items-center mb-4">
             <label className="text-sm font-bold text-text-primary uppercase tracking-wider">
               {t("location_label")}
             </label>
-            <Link href="/setup-location?redirect=/post-request" className="text-xs font-bold text-primary hover:underline">
-              {t("change_location")}
-            </Link>
           </div>
           <div className="flex gap-4 items-center">
             <div className="w-24 h-24 rounded-xl border border-border flex-shrink-0 overflow-hidden">
@@ -297,7 +314,7 @@ export default function PostRequestPage() {
           </div>
         </div>
 
-        {/* Field 7: Anonymity Toggle */}
+        {/* Field 7: Privacy Toggles */}
         <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -349,14 +366,8 @@ export default function PostRequestPage() {
               <div className="scale-50">
                 <LoadingSpinner size={32} className="!gap-0 !flex-row !text-white" />
               </div>
-            ) : t("submit")}
+            ) : t("update")}
           </button>
-
-          <div className="text-center">
-            <p className="text-[10px] text-text-muted">
-              {t("expiry_note", { date: tc("eid_date") })}
-            </p>
-          </div>
         </div>
       </form>
     </div>
