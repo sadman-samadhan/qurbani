@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Bell, Map as MapIcon, ClipboardList, MessageCircle, User,
   Plus, Search, Phone, MessageSquare, AlertCircle, MapPin,
-  Clock, Users as UsersIcon, X, Globe
+  Clock, Users as UsersIcon, X, Globe, UserPlus, CheckCircle2,
+  ChevronRight
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
@@ -41,11 +42,217 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [myJoinRequest, setMyJoinRequest] = useState<{ status: string; approved_at?: string; shares_wanted?: number } | null>(null);
+  const [joinStatusLoading, setJoinStatusLoading] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [joinSharesWanted, setJoinSharesWanted] = useState(1);
+  const [joinSubmitting, setJoinSubmitting] = useState(false);
+  const [pendingJoinRequests, setPendingJoinRequests] = useState<any[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [approveConfirm, setApproveConfirm] = useState<any | null>(null);
+  const [rejectConfirm, setRejectConfirm] = useState<any | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   const handleLangToggle = async () => {
     const next = locale === "en" ? "bn" : "en";
     await setLocale(next);
     router.refresh();
+  };
+
+  const fetchMyJoinStatus = async (requestId: string) => {
+    if (!profile) return;
+    setJoinStatusLoading(true);
+    const { data } = await supabase
+      .from("join_requests")
+      .select("status, approved_at, shares_wanted")
+      .eq("request_id", requestId)
+      .eq("requester_id", profile.id)
+      .in("status", ["pending", "approved"])
+      .maybeSingle();
+    setMyJoinRequest(data || null);
+    setJoinStatusLoading(false);
+  };
+
+  const handleJoinSubmit = async () => {
+    if (!profile || !selectedRequest) return;
+    setJoinSubmitting(true);
+    try {
+      const { error } = await supabase.from("join_requests").insert({
+        request_id: selectedRequest.id,
+        requester_id: profile.id,
+        shares_wanted: joinSharesWanted,
+      });
+      if (error) {
+        if (error.message?.includes("max_pending_requests_reached")) {
+          toast.error(locale === "en"
+            ? "You have 5 active requests. Withdraw one before sending another."
+            : "আপনার সর্বোচ্চ ৫টি সক্রিয় অনুরোধ আছে। একটি প্রত্যাহার করুন তারপর আবার চেষ্টা করুন।");
+        } else {
+          toast.error(locale === "en" ? "Something went wrong. Try again." : "সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+        }
+        return;
+      }
+      await supabase.from("messages").insert({
+        sender_id: profile.id,
+        receiver_id: selectedRequest.user_id,
+        request_id: selectedRequest.id,
+        content: locale === "en"
+          ? `As-salamu alaykum, I'd like to join with ${joinSharesWanted} share(s).`
+          : `আস-সালামু আলাইকুম, আমি ${joinSharesWanted}টি শেয়ারে যোগ দিতে চাই।`,
+      });
+      toast.success(locale === "en" ? "Request sent! Opening chat…" : "অনুরোধ পাঠানো হয়েছে! চ্যাট খুলছে…");
+      setShowJoinModal(false);
+      router.push(`/messages/${selectedRequest.id}/${selectedRequest.user_id}`);
+    } catch {
+      toast.error(locale === "en" ? "Something went wrong." : "সমস্যা হয়েছে।");
+    } finally {
+      setJoinSubmitting(false);
+    }
+  };
+
+  // ── Notifications ──────────────────────────────────────────────────────────
+  const fetchNotifications = useCallback(async (userId: string) => {
+    const { data } = await supabase
+      .from("notifications")
+      .select(`
+        id, type, read, created_at,
+        join_requests (
+          id, shares_wanted, request_id,
+          share_requests:request_id ( area_name ),
+          requester:requester_id ( full_name )
+        )
+      `)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    setNotifications(data || []);
+    setNotifCount((data || []).filter((n: any) => !n.read).length);
+  }, []);
+
+  const markAllNotificationsRead = async (userId: string) => {
+    await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("user_id", userId)
+      .eq("read", false);
+    setNotifCount(0);
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const fetchPendingJoinRequests = async (userId: string) => {
+    setPendingLoading(true);
+    const { data: ownPosts } = await supabase
+      .from("share_requests")
+      .select("id, area_name, shares_wanted")
+      .eq("user_id", userId)
+      .eq("status", "open");
+
+    if (!ownPosts || ownPosts.length === 0) {
+      setPendingJoinRequests([]);
+      setPendingLoading(false);
+      return;
+    }
+
+    const postIds = ownPosts.map((p: any) => p.id);
+    const { data: joinReqs } = await supabase
+      .from("join_requests")
+      .select("id, request_id, requester_id, shares_wanted, created_at, status")
+      .in("request_id", postIds)
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
+
+    if (!joinReqs || joinReqs.length === 0) {
+      setPendingJoinRequests([]);
+      setPendingLoading(false);
+      return;
+    }
+
+    const requesterIds = [...new Set(joinReqs.map((r: any) => r.requester_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, penalty_count")
+      .in("id", requesterIds);
+
+    const enriched = joinReqs.map((jr: any) => ({
+      ...jr,
+      post: ownPosts.find((p: any) => p.id === jr.request_id),
+      requester: profiles?.find((p: any) => p.id === jr.requester_id),
+    }));
+
+    setPendingJoinRequests(enriched);
+    setPendingLoading(false);
+  };
+
+  const handleApprove = async () => {
+    if (!approveConfirm || !profile) return;
+    setActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from("join_requests")
+        .update({ status: "approved", approved_at: new Date().toISOString() })
+        .eq("id", approveConfirm.id);
+      if (error) throw error;
+
+      const phone = profile.phone_number || profile.whatsapp_number || "";
+      const msgContent = locale === "en"
+        ? `✅ Request approved. Contact: ${phone}`
+        : `✅ আপনার অনুরোধ অনুমোদিত হয়েছে। যোগাযোগ: ${phone}`;
+
+      // DB trigger auto_notify_on_join_event handles the notification insert.
+      // We only need to send the system message here.
+      await supabase.from("messages").insert({
+        sender_id: profile.id,
+        receiver_id: approveConfirm.requester_id,
+        request_id: approveConfirm.request_id,
+        content: msgContent,
+        is_system_message: true,
+      });
+
+      toast.success(locale === "en" ? "Request approved!" : "অনুরোধ অনুমোদিত হয়েছে!");
+      setApproveConfirm(null);
+      fetchPendingJoinRequests(profile.id);
+    } catch {
+      toast.error(locale === "en" ? "Something went wrong." : "সমস্যা হয়েছে।");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectConfirm || !profile) return;
+    setActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from("join_requests")
+        .update({ status: "rejected" })
+        .eq("id", rejectConfirm.id);
+      if (error) throw error;
+
+      const msgContent = locale === "en"
+        ? "Your request could not be accepted. Thank you."
+        : "আপনার অনুরোধ গ্রহণ করা সম্ভব হয়নি। ধন্যবাদ।";
+
+      // DB trigger auto_notify_on_join_event handles the notification insert.
+      // We only need to send the system message here.
+      await supabase.from("messages").insert({
+        sender_id: profile.id,
+        receiver_id: rejectConfirm.requester_id,
+        request_id: rejectConfirm.request_id,
+        content: msgContent,
+        is_system_message: true,
+      });
+
+      toast.success(locale === "en" ? "Request rejected." : "অনুরোধ প্রত্যাখ্যান করা হয়েছে।");
+      setRejectConfirm(null);
+      fetchPendingJoinRequests(profile.id);
+    } catch {
+      toast.error(locale === "en" ? "Something went wrong." : "সমস্যা হয়েছে।");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // 1. Fetch User Profile
@@ -68,8 +275,10 @@ export default function DashboardPage() {
       setProfile(profile);
       setMapCenter([profile.latitude, profile.longitude]);
       fetchNearby(profile.latitude, profile.longitude, user.id);
+      fetchPendingJoinRequests(user.id);
+      fetchNotifications(user.id);
 
-      // Fetch initial unread count
+      // Fetch initial unread message count
       const { count } = await supabase
         .from("messages")
         .select("*", { count: "exact", head: true })
@@ -162,9 +371,40 @@ export default function DashboardPage() {
     };
   }, [profile]);
 
+  // 5. Realtime Subscription — notifications (Phase 5)
+  useEffect(() => {
+    if (!profile) return;
+
+    const channel = supabase
+      .channel("notifications_realtime")
+      .on(
+        "postgres_changes" as any,
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${profile.id}`,
+        },
+        () => {
+          fetchNotifications(profile.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile, fetchNotifications]);
+
   const handleCardClick = (req: any) => {
     setSelectedRequest(req);
     setMapCenter([req.latitude, req.longitude]);
+    setMyJoinRequest(null);
+    setShowJoinModal(false);
+    setJoinSharesWanted(1);
+    if (req.is_joinable && req.user_id !== profile?.id) {
+      fetchMyJoinStatus(req.id);
+    }
   };
 
   return (
@@ -204,6 +444,23 @@ export default function DashboardPage() {
             >
               <User className="w-4 h-4" /> {td("profile")}
             </button>
+            {/* Desktop bell */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setNotifPanelOpen(true);
+                  if (notifCount > 0 && profile) markAllNotificationsRead(profile.id);
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-text-muted hover:text-primary hover:bg-primary/5 text-sm font-medium rounded-xl transition-colors"
+              >
+                <Bell className="w-4 h-4" />
+              </button>
+              {notifCount > 0 && (
+                <span className="absolute -top-1 right-0 bg-error text-[8px] text-white px-1.5 py-0.5 rounded-full font-bold min-w-[16px] text-center">
+                  {notifCount > 9 ? "9+" : notifCount}
+                </span>
+              )}
+            </div>
             <button
               onClick={() => router.push("/post-request")}
               className="ml-2 flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-primary-light active:scale-95 transition-all shadow-sm shadow-primary/20"
@@ -219,7 +476,23 @@ export default function DashboardPage() {
             <Globe className="w-4 h-4" />
             {locale === "en" ? "বাংলা" : "EN"}
           </button>
-          <Bell className="w-6 h-6 text-border cursor-not-allowed lg:hidden" />
+          {/* Bell notification icon — mobile only */}
+          <div className="relative lg:hidden">
+            <button
+              onClick={() => {
+                setNotifPanelOpen(true);
+                if (notifCount > 0 && profile) markAllNotificationsRead(profile.id);
+              }}
+              className="relative p-1 rounded-xl hover:bg-primary/5 active:scale-95 transition-all"
+            >
+              <Bell className="w-6 h-6 text-text-muted" />
+              {notifCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-error text-[8px] text-white px-1.5 py-0.5 rounded-full font-bold min-w-[16px] text-center">
+                  {notifCount > 9 ? "9+" : notifCount}
+                </span>
+              )}
+            </button>
+          </div>
           {/* Desktop profile avatar */}
           {profile && (
             <button
@@ -233,6 +506,79 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Pending Join Requests — owner management */}
+      {(pendingLoading || pendingJoinRequests.length > 0) && (
+        <div className="px-4 lg:px-6 pt-4 lg:pt-6">
+          <h2 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+            <UserPlus className="w-4 h-4 text-amber-500" />
+            {locale === "en" ? "Join Requests" : "যোগ দেওয়ার অনুরোধ"}
+            <span className="ml-auto bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">
+              {pendingJoinRequests.length}
+            </span>
+          </h2>
+          {pendingLoading ? (
+            <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
+              {[1, 2].map(i => (
+                <div key={i} className="flex-shrink-0 w-72 bg-white border border-border rounded-2xl p-4 animate-pulse">
+                  <div className="w-24 h-4 bg-background rounded mb-3" />
+                  <div className="w-40 h-4 bg-background rounded mb-2" />
+                  <div className="flex gap-2 mt-4">
+                    <div className="flex-1 h-9 bg-background rounded-xl" />
+                    <div className="flex-1 h-9 bg-background rounded-xl" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar lg:grid lg:grid-cols-3 lg:overflow-visible">
+              {pendingJoinRequests.map((jr) => (
+                <div key={jr.id} className="flex-shrink-0 w-72 lg:w-auto bg-white border border-amber-200 rounded-2xl p-4 shadow-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-bold text-primary">
+                        {jr.requester?.full_name?.[0] || "?"}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-text-primary text-sm truncate">
+                        {jr.requester?.full_name || (locale === "en" ? "Unknown" : "অজানা")}
+                      </p>
+                      {(jr.requester?.penalty_count ?? 0) > 0 ? (
+                        <p className="text-xs text-amber-600 font-semibold">
+                          ⚠️ {jr.requester.penalty_count} {locale === "en" ? "penalty(ies)" : "পেনাল্টি"}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <p className="text-xs text-text-muted mb-1">
+                    {locale === "en" ? "Post" : "পোস্ট"}: {jr.post?.area_name?.split(",")[0] || "—"}
+                  </p>
+                  <p className="text-xs font-semibold text-text-primary mb-4">
+                    {locale === "en"
+                      ? `${jr.shares_wanted} share(s) wanted`
+                      : `${jr.shares_wanted}টি শেয়ার চাওয়া হয়েছে`}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setRejectConfirm(jr)}
+                      className="flex-1 py-2 border-2 border-error/40 text-error rounded-xl text-xs font-bold hover:bg-error/5 active:scale-95 transition-all"
+                    >
+                      {locale === "en" ? "Reject" : "প্রত্যাখ্যান করুন"}
+                    </button>
+                    <button
+                      onClick={() => setApproveConfirm(jr)}
+                      className="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-opacity-90 active:scale-95 transition-all"
+                    >
+                      {locale === "en" ? "Approve" : "অনুমোদন করুন"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Map Section */}
       <div className="relative h-[50vh] sm:h-[55vh] min-h-[300px] lg:h-[60vh] flex-shrink-0">
@@ -322,6 +668,118 @@ export default function DashboardPage() {
         <NavButton icon={<User className="w-6 h-6" />} label={td("profile")} onClick={() => router.push("/profile")} />
       </div>
 
+      {/* Approve Confirm Dialog */}
+      {approveConfirm && (
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-7 h-7 text-primary" />
+            </div>
+            <h3 className="text-lg font-bold text-center mb-2">
+              {locale === "en" ? "Approve Request?" : "অনুরোধ অনুমোদন করবেন?"}
+            </h3>
+            <p className="text-sm text-text-muted text-center mb-6">
+              {locale === "en"
+                ? `Give ${approveConfirm.shares_wanted} share(s) to ${approveConfirm.requester?.full_name}? Phone numbers will be shared.`
+                : `${approveConfirm.requester?.full_name}-কে ${approveConfirm.shares_wanted}টি শেয়ার দেবেন? অনুমোদনের পরে ফোন নম্বর শেয়ার হবে।`}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setApproveConfirm(null)}
+                className="flex-1 py-3 border-2 border-border rounded-xl font-bold text-text-muted hover:bg-background transition-all active:scale-95"
+              >
+                {locale === "en" ? "Cancel" : "বাতিল"}
+              </button>
+              <button
+                onClick={handleApprove}
+                disabled={actionLoading}
+                className="flex-1 py-3 rounded-xl font-bold text-white bg-primary hover:bg-opacity-90 transition-all active:scale-95 disabled:opacity-60"
+              >
+                {actionLoading ? "…" : (locale === "en" ? "Approve" : "অনুমোদন করুন")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Confirm Dialog */}
+      {rejectConfirm && (
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 bg-error/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <X className="w-7 h-7 text-error" />
+            </div>
+            <h3 className="text-lg font-bold text-center mb-2">
+              {locale === "en" ? "Reject Request?" : "অনুরোধ প্রত্যাখ্যান করবেন?"}
+            </h3>
+            <p className="text-sm text-text-muted text-center mb-6">
+              {locale === "en"
+                ? `Reject ${rejectConfirm.requester?.full_name}'s request for ${rejectConfirm.shares_wanted} share(s)?`
+                : `${rejectConfirm.requester?.full_name}-এর ${rejectConfirm.shares_wanted}টি শেয়ারের অনুরোধ প্রত্যাখ্যান করবেন?`}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRejectConfirm(null)}
+                className="flex-1 py-3 border-2 border-border rounded-xl font-bold text-text-muted hover:bg-background transition-all active:scale-95"
+              >
+                {locale === "en" ? "Cancel" : "বাতিল"}
+              </button>
+              <button
+                onClick={handleReject}
+                disabled={actionLoading}
+                className="flex-1 py-3 rounded-xl font-bold text-white bg-error hover:bg-opacity-90 transition-all active:scale-95 disabled:opacity-60"
+              >
+                {actionLoading ? "…" : (locale === "en" ? "Reject" : "প্রত্যাখ্যান করুন")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Join Modal */}
+      {showJoinModal && selectedRequest && (
+        <div className="fixed inset-0 z-[10000] flex items-end justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-center mb-1">
+              {locale === "en" ? "How many shares do you want?" : "আপনি কতটি শেয়ার নিতে চান?"}
+            </h3>
+            <p className="text-sm text-text-muted text-center mb-6">
+              {locale === "en"
+                ? `Up to ${Math.max(0, 7 - (selectedRequest.shares_filled ?? selectedRequest.shares_wanted))} shares available`
+                : `সর্বোচ্চ ${Math.max(0, 7 - (selectedRequest.shares_filled ?? selectedRequest.shares_wanted))}টি শেয়ার নেওয়া যাবে`}
+            </p>
+            <div className="flex items-center justify-center gap-6 mb-8">
+              <button
+                onClick={() => setJoinSharesWanted(Math.max(1, joinSharesWanted - 1))}
+                disabled={joinSharesWanted <= 1}
+                className="w-12 h-12 rounded-full border-2 border-primary text-primary text-2xl font-bold flex items-center justify-center disabled:opacity-30 active:scale-95 transition-all"
+              >-</button>
+              <span className="text-4xl font-bold text-primary w-12 text-center">{joinSharesWanted}</span>
+              <button
+                onClick={() => setJoinSharesWanted(Math.min(Math.max(0, 7 - (selectedRequest.shares_filled ?? selectedRequest.shares_wanted)), joinSharesWanted + 1))}
+                disabled={joinSharesWanted >= Math.max(0, 7 - (selectedRequest.shares_filled ?? selectedRequest.shares_wanted))}
+                className="w-12 h-12 rounded-full border-2 border-primary text-primary text-2xl font-bold flex items-center justify-center disabled:opacity-30 active:scale-95 transition-all"
+              >+</button>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowJoinModal(false)}
+                className="flex-1 py-3 border-2 border-border rounded-xl font-bold text-text-muted hover:bg-background transition-all active:scale-95"
+              >
+                {locale === "en" ? "Cancel" : "বাতিল"}
+              </button>
+              <button
+                onClick={handleJoinSubmit}
+                disabled={joinSubmitting}
+                className="flex-1 py-3 rounded-xl font-bold text-white bg-primary hover:bg-opacity-90 transition-all active:scale-95 disabled:opacity-60"
+              >
+                {joinSubmitting ? "…" : (locale === "en" ? "Send Request" : "অনুরোধ পাঠান")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bottom Sheet Details */}
       {selectedRequest && (
         <div className="fixed inset-0 z-[9999] pointer-events-none">
@@ -374,64 +832,156 @@ export default function DashboardPage() {
               {(() => {
                 const hasPhone = !!(selectedRequest.whatsapp_number || selectedRequest.phone_number) && !selectedRequest.hide_phone;
                 const isOwnListing = selectedRequest.user_id === profile?.id;
+                const sharesFilled = selectedRequest.shares_filled ?? selectedRequest.shares_wanted;
+                const isFull = sharesFilled >= 7;
+
+                if (!selectedRequest.is_joinable) {
+                  return (
+                    <div className="flex flex-col gap-3 mb-6">
+                      {hasPhone && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <a
+                            href={`https://wa.me/88${selectedRequest.whatsapp_number || selectedRequest.phone_number}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-primary text-white py-4 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-primary/20 active:scale-95 transition-all text-sm"
+                          >
+                            <MessageSquare className="w-5 h-5 flex-shrink-0" />
+                            {tm("whatsapp")}
+                          </a>
+                          <a
+                            href={`tel:${selectedRequest.phone_number || selectedRequest.whatsapp_number}`}
+                            className="border-2 border-accent text-accent py-4 rounded-2xl flex items-center justify-center gap-2 font-bold active:scale-95 transition-all text-sm"
+                          >
+                            <Phone className="w-5 h-5 flex-shrink-0" />
+                            {tm("call")}
+                          </a>
+                        </div>
+                      )}
+                      {!isOwnListing && (
+                        <>
+                          {hasPhone && (
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 h-px bg-border" />
+                              <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
+                                {locale === "en" ? "or" : "অথবা"}
+                              </span>
+                              <div className="flex-1 h-px bg-border" />
+                            </div>
+                          )}
+                          <button
+                            onClick={() => router.push(`/messages/${selectedRequest.id}/${selectedRequest.user_id}`)}
+                            className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold active:scale-95 transition-all text-sm ${hasPhone
+                              ? "border-2 border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
+                              : "bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02]"
+                              }`}
+                          >
+                            <MessageCircle className="w-5 h-5 flex-shrink-0" />
+                            {tm("send_message")}
+                          </button>
+                        </>
+                      )}
+                      {isOwnListing && (
+                        <div className="w-full py-3 rounded-2xl bg-background border border-dashed border-border flex items-center justify-center gap-2 text-text-muted text-sm">
+                          <UsersIcon className="w-4 h-4 flex-shrink-0" />
+                          {locale === "en" ? "This is your listing" : "এটি আপনার পোস্ট"}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Joinable post
                 return (
                   <div className="flex flex-col gap-3 mb-6">
+                    <ShareProgress filled={sharesFilled} />
 
-                    {/* WhatsApp + Call — only when contact info exists */}
-                    {hasPhone && (
-                      <div className="grid grid-cols-2 gap-3">
-                        <a
-                          href={`https://wa.me/88${selectedRequest.whatsapp_number || selectedRequest.phone_number}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bg-primary text-white py-4 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-primary/20 active:scale-95 transition-all text-sm"
-                        >
-                          <MessageSquare className="w-5 h-5 flex-shrink-0" />
-                          {tm("whatsapp")}
-                        </a>
-                        <a
-                          href={`tel:${selectedRequest.phone_number || selectedRequest.whatsapp_number}`}
-                          className="border-2 border-accent text-accent py-4 rounded-2xl flex items-center justify-center gap-2 font-bold active:scale-95 transition-all text-sm"
-                        >
-                          <Phone className="w-5 h-5 flex-shrink-0" />
-                          {tm("call")}
-                        </a>
+                    {isOwnListing ? (
+                      <div className="w-full py-3 rounded-2xl bg-background border border-dashed border-border flex items-center justify-center gap-2 text-text-muted text-sm">
+                        <UsersIcon className="w-4 h-4 flex-shrink-0" />
+                        {locale === "en" ? "This is your listing" : "এটি আপনার পোস্ট"}
                       </div>
-                    )}
-
-                    {/* Message button — hidden on own listing */}
-                    {!isOwnListing && (
+                    ) : (
                       <>
-                        {hasPhone && (
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 h-px bg-border" />
-                            <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
-                              {locale === "en" ? "or" : "অথবা"}
-                            </span>
-                            <div className="flex-1 h-px bg-border" />
+                        {isFull && myJoinRequest?.status !== "approved" && (
+                          <div className="w-full py-3 rounded-2xl bg-gray-50 border border-border flex items-center justify-center text-text-muted text-sm">
+                            {locale === "en" ? "All shares for this cow are filled" : "এই গরুর সব শেয়ার পূর্ণ হয়ে গেছে"}
                           </div>
                         )}
+
+                        {myJoinRequest?.status === "approved" && (
+                          <>
+                            <div className="w-full py-3 rounded-2xl bg-green-50 border border-green-200 flex items-center justify-center gap-2 text-green-700 text-sm font-bold">
+                              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                              {locale === "en" ? "Approved" : "অনুমোদিত হয়েছে"}
+                            </div>
+                            {!!(selectedRequest.whatsapp_number || selectedRequest.phone_number) && (
+                              <div className="grid grid-cols-2 gap-3">
+                                <a
+                                  href={`https://wa.me/88${selectedRequest.whatsapp_number || selectedRequest.phone_number}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="bg-primary text-white py-4 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-primary/20 active:scale-95 transition-all text-sm"
+                                >
+                                  <MessageSquare className="w-5 h-5 flex-shrink-0" />
+                                  {tm("whatsapp")}
+                                </a>
+                                <a
+                                  href={`tel:${selectedRequest.phone_number || selectedRequest.whatsapp_number}`}
+                                  className="border-2 border-accent text-accent py-4 rounded-2xl flex items-center justify-center gap-2 font-bold active:scale-95 transition-all text-sm"
+                                >
+                                  <Phone className="w-5 h-5 flex-shrink-0" />
+                                  {tm("call")}
+                                </a>
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {myJoinRequest?.status === "pending" && (
+                          <div className="w-full py-3 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center gap-2 text-amber-700 text-sm font-bold">
+                            <Clock className="w-4 h-4 flex-shrink-0" />
+                            {locale === "en" ? "Request sent — awaiting approval" : "অনুরোধ পাঠানো হয়েছে — অপেক্ষায় আছে"}
+                          </div>
+                        )}
+
+                        {joinStatusLoading && (
+                          <div className="w-full h-12 bg-background rounded-2xl animate-pulse" />
+                        )}
+
+                        {!myJoinRequest && !isFull && !joinStatusLoading && (
+                          profile?.is_banned ? (
+                            <div className="w-full py-3 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 text-sm text-center px-3">
+                              {locale === "en" ? "Your account is suspended." : "আপনার অ্যাকাউন্ট স্থগিত আছে।"}
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setJoinSharesWanted(1); setShowJoinModal(true); }}
+                              className="w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm"
+                            >
+                              <UserPlus className="w-5 h-5 flex-shrink-0" />
+                              {locale === "en" ? "Request to Join" : "যোগ দিতে চাই"}
+                            </button>
+                          )
+                        )}
+
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-px bg-border" />
+                          <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
+                            {locale === "en" ? "or chat first" : "বা আগে চ্যাট করুন"}
+                          </span>
+                          <div className="flex-1 h-px bg-border" />
+                        </div>
+
                         <button
                           onClick={() => router.push(`/messages/${selectedRequest.id}/${selectedRequest.user_id}`)}
-                          className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold active:scale-95 transition-all text-sm ${hasPhone
-                            ? "border-2 border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
-                            : "bg-primary text-white shadow-lg shadow-primary/20 hover:scale-[1.02]"
-                            }`}
+                          className="w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold border-2 border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 active:scale-95 transition-all text-sm"
                         >
                           <MessageCircle className="w-5 h-5 flex-shrink-0" />
                           {tm("send_message")}
                         </button>
                       </>
                     )}
-
-                    {/* Own listing indicator */}
-                    {isOwnListing && (
-                      <div className="w-full py-3 rounded-2xl bg-background border border-dashed border-border flex items-center justify-center gap-2 text-text-muted text-sm">
-                        <UsersIcon className="w-4 h-4 flex-shrink-0" />
-                        {locale === "en" ? "This is your listing" : "এটি আপনার পোস্ট"}
-                      </div>
-                    )}
-
                   </div>
                 );
               })()}
@@ -443,7 +993,131 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* ── Notification Panel (Phase 5) ──────────────────────────────────── */}
+      {notifPanelOpen && (
+        <div className="fixed inset-0 z-[10002] flex items-end lg:items-start lg:justify-end">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            onClick={() => setNotifPanelOpen(false)}
+          />
+          {/* Panel */}
+          <div className="relative w-full lg:w-96 lg:max-h-[85vh] lg:mt-14 lg:mr-4 bg-white rounded-t-[2.5rem] lg:rounded-2xl shadow-2xl animate-in slide-in-from-bottom lg:slide-in-from-top duration-300 flex flex-col max-h-[80vh]">
+            {/* Handle (mobile) */}
+            <div className="w-12 h-1.5 bg-border rounded-full mx-auto mt-4 flex-shrink-0 lg:hidden" />
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
+              <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
+                <Bell className="w-4 h-4 text-primary" />
+                {locale === "en" ? "Notifications" : "নোটিফিকেশন"}
+              </h2>
+              <button
+                onClick={() => setNotifPanelOpen(false)}
+                className="p-1.5 rounded-xl bg-background hover:bg-border/30 active:scale-95 transition-all"
+              >
+                <X className="w-4 h-4 text-text-muted" />
+              </button>
+            </div>
+            {/* List */}
+            <div className="overflow-y-auto flex-1">
+              {notifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+                  <span className="text-4xl mb-3">🔔</span>
+                  <p className="text-text-muted text-sm">
+                    {locale === "en" ? "No new notifications." : "কোনো নতুন নোটিফিকেশন নেই।"}
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {notifications.map((notif: any) => (
+                    <NotificationItem
+                      key={notif.id}
+                      notif={notif}
+                      locale={locale}
+                      onNavigate={(path: string) => {
+                        setNotifPanelOpen(false);
+                        router.push(path);
+                      }}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+// ── NotificationItem component (Phase 5) ─────────────────────────────────────
+function NotificationItem({ notif, locale, onNavigate }: any) {
+  const { formatDistanceToNow } = require("date-fns");
+  const jr = notif.join_requests;
+  const requesterName = jr?.requester?.full_name || (locale === "en" ? "Someone" : "কেউ");
+  const sharesWanted = jr?.shares_wanted ?? "?";
+  const areaName = jr?.share_requests?.area_name?.split(",")[0] || "";
+  const requestId = jr?.request_id;
+
+  let icon = "🔔";
+  let text = "";
+  let subtext = areaName;
+
+  switch (notif.type) {
+    case "join_request":
+      icon = "👤";
+      text = locale === "en"
+        ? `${requesterName} wants to join your post`
+        : `${requesterName} আপনার পোস্টে যোগ দিতে চান`;
+      break;
+    case "join_approved":
+      icon = "✅";
+      text = locale === "en"
+        ? `Your join request was approved`
+        : `আপনার অনুরোধ অনুমোদিত হয়েছে`;
+      break;
+    case "join_rejected":
+      icon = "❌";
+      text = locale === "en"
+        ? `Your join request was not accepted`
+        : `আপনার অনুরোধ গৃহীত হয়নি`;
+      break;
+    case "join_withdrawn":
+      icon = "↩️";
+      text = locale === "en"
+        ? `${requesterName} withdrew their request`
+        : `${requesterName} তাদের অনুরোধ প্রত্যাহার করেছেন`;
+      break;
+    default:
+      text = locale === "en" ? "New notification" : "নতুন নোটিফিকেশন";
+  }
+
+  return (
+    <li
+      className={`flex items-start gap-3 px-5 py-4 hover:bg-background transition-colors cursor-pointer ${
+        !notif.read ? "bg-primary/5" : ""
+      }`}
+      onClick={() => {
+        if (requestId) onNavigate(`/my-requests`);
+      }}
+    >
+      <span className="text-xl flex-shrink-0 mt-0.5">{icon}</span>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm leading-snug ${
+          !notif.read ? "font-semibold text-text-primary" : "font-medium text-text-muted"
+        }`}>{text}</p>
+        {subtext && (
+          <p className="text-xs text-text-muted mt-0.5 truncate">{subtext}</p>
+        )}
+        <p className="text-[10px] text-text-muted mt-1">
+          {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+        </p>
+      </div>
+      {!notif.read && (
+        <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2" />
+      )}
+    </li>
   );
 }
 
@@ -466,6 +1140,8 @@ function NavButton({ icon, label, active = false, disabled = false, onClick }: a
 function RequestCard({ request, onClick, className = "flex-shrink-0 w-64 sm:w-72" }: any) {
   const router = useRouter();
   const tm = useTranslations("map_page");
+  const locale = useLocale();
+  const sharesFilled = request.shares_filled ?? request.shares_wanted;
 
   return (
     <div
@@ -485,6 +1161,20 @@ function RequestCard({ request, onClick, className = "flex-shrink-0 w-64 sm:w-72
         <p className="text-xs text-text-muted mb-1">{tm("shares_wanted")}</p>
         <ShareBoxes count={request.shares_wanted} mini />
       </div>
+      {request.is_joinable && (
+        <div className="mb-3">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[10px] text-text-muted">{locale === "en" ? "Filled" : "পূর্ণ"}</span>
+            <span className="text-[10px] font-bold text-primary">{sharesFilled}/7</span>
+          </div>
+          <div className="h-1.5 bg-border/40 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full"
+              style={{ width: `${Math.min(100, Math.round((sharesFilled / 7) * 100))}%` }}
+            />
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between mt-4">
         <div>
           <p className="text-[10px] text-text-muted uppercase">{tm("budget")}</p>
@@ -529,6 +1219,24 @@ function InfoItem({ label, value }: any) {
     <div>
       <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-1">{label}</p>
       <div className="text-sm font-semibold text-text-primary">{value}</div>
+    </div>
+  );
+}
+
+function ShareProgress({ filled }: { filled: number }) {
+  const pct = Math.min(100, Math.round((filled / 7) * 100));
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-1">
+        <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">Shares</span>
+        <span className="text-xs font-bold text-primary">{filled}/7</span>
+      </div>
+      <div className="h-2 bg-border/40 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${filled >= 7 ? "bg-accent" : "bg-primary"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   );
 }

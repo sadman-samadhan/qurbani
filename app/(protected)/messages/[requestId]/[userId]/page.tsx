@@ -18,6 +18,7 @@ type Message = {
   sender_id: string;
   receiver_id: string;
   request_id: string | null;
+  is_system_message?: boolean;
 };
 
 type ShareRequest = {
@@ -70,7 +71,7 @@ export default function ThreadPage() {
     const [msgsRes, profileRes, srRes] = await Promise.all([
       supabase
         .from("messages")
-        .select("id, content, created_at, read, sender_id, receiver_id, request_id")
+        .select("id, content, created_at, read, sender_id, receiver_id, request_id, is_system_message")
         .eq("request_id", requestId)
         .or(
           `and(sender_id.eq.${userId},receiver_id.eq.${otherUserId}),` +
@@ -262,6 +263,15 @@ export default function ThreadPage() {
           ) : (
             <div className="space-y-2">
               {messages.map(msg => {
+                if (msg.is_system_message) {
+                  return (
+                    <div key={msg.id} className="flex justify-center my-3">
+                      <div className="bg-gray-100 text-gray-600 text-xs px-4 py-2 rounded-full text-center max-w-[85%] border border-gray-200 leading-relaxed">
+                        {msg.content}
+                      </div>
+                    </div>
+                  );
+                }
                 const isMe = msg.sender_id === currentUserId;
                 return (
                   <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>

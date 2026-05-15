@@ -129,6 +129,20 @@ export default function PublicMap({ requests, userPos }: PublicMapProps) {
                   <Users className="w-4 h-4 text-primary" />
                   {req.shares_wanted} {t("shares_wanted")}
                 </div>
+                {req.is_joinable && (
+                  <div>
+                    <div className="flex justify-between text-[10px] text-text-muted mb-1">
+                      <span>Shares filled</span>
+                      <span className="font-bold text-primary">{req.shares_filled ?? req.shares_wanted}/7</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#1B6B3A] rounded-full"
+                        style={{ width: `${Math.min(100, Math.round(((req.shares_filled ?? req.shares_wanted) / 7) * 100))}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 text-sm text-text-muted">
                   <MapPin className="w-4 h-4 text-primary" />
                   {req.area_name}

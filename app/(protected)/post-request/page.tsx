@@ -96,6 +96,8 @@ export default function PostRequestPage() {
           expires_at: EID_DATE,
           hide_name: hideName,
           hide_phone: hidePhone,
+          is_joinable: true,
+          shares_filled: sharesWanted,
         });
 
       if (error) throw error;

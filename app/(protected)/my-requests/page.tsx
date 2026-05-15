@@ -40,7 +40,21 @@ export default function MyRequestsPage() {
     if (error) {
       toast.error("পোস্টগুলো আনতে সমস্যা হয়েছে");
     } else {
-      setRequests(data || []);
+      const reqs = data || [];
+      // Fetch pending join request counts for open joinable posts
+      const openIds = reqs.filter((r: any) => r.status === "open" && r.is_joinable).map((r: any) => r.id);
+      let pendingCounts: Record<string, number> = {};
+      if (openIds.length > 0) {
+        const { data: jrData } = await supabase
+          .from("join_requests")
+          .select("request_id")
+          .in("request_id", openIds)
+          .eq("status", "pending");
+        (jrData || []).forEach((jr: any) => {
+          pendingCounts[jr.request_id] = (pendingCounts[jr.request_id] || 0) + 1;
+        });
+      }
+      setRequests(reqs.map((r: any) => ({ ...r, pending_count: pendingCounts[r.id] || 0 })));
     }
     setLoading(false);
   };
@@ -155,7 +169,14 @@ export default function MyRequestsPage() {
               {requests.map((req) => (
                 <div key={req.id} className="bg-white rounded-2xl border border-border shadow-sm p-5 relative overflow-hidden flex flex-col">
                   <div className="flex justify-between items-start mb-4">
-                    <StatusBadge status={req.status} />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <StatusBadge status={req.status} />
+                      {req.pending_count > 0 && (
+                        <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200">
+                          {req.pending_count} pending
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1 text-xs text-text-muted">
                       <Clock className="w-3 h-3" />
                       {formatDistanceToNow(new Date(req.created_at))} ago
