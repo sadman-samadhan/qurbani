@@ -41,11 +41,11 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen font-hind bg-white overflow-x-hidden">
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] bg-gradient-to-br from-[#1B6B3A] to-[#0F3D22] text-white flex flex-col items-center justify-center px-6 pt-20 pb-32 text-center overflow-hidden">
+      <section className="relative min-h-screen bg-gradient-to-br from-[#1B6B3A] to-[#0F3D22] text-white flex flex-col items-center justify-center px-6 pt-20 pb-32 text-center overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <img 
-            src="/images/city.png" 
-            alt="" 
+          <img
+            src="/images/city.png"
+            alt=""
             className="w-full h-full object-cover opacity-20"
           />
           <div className="absolute inset-0 bg-gradient-to-br from-[#1B6B3A]/60 to-[#0F3D22]/80" />
@@ -53,23 +53,23 @@ export default function LandingPage() {
 
         <div className="relative z-10 max-w-4xl flex flex-col items-center">
           <Logo
-            width={120}
-            height={120}
+            width={144}
+            height={144}
             showText={false}
-            className="mb-6 animate-in zoom-in duration-700"
+            className="mb-6 animate-in zoom-in duration-700 [&_img]:!w-24 [&_img]:!h-24 md:[&_img]:!w-32 md:[&_img]:!h-32 lg:[&_img]:!w-36 lg:[&_img]:!h-36"
           />
-          <h1 className="text-6xl md:text-8xl font-bold mb-4 tracking-tighter animate-in fade-in slide-in-from-top duration-700">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold mb-4 tracking-tighter animate-in fade-in slide-in-from-top duration-700">
             QurbaniSathi
           </h1>
-          <h2 className="text-3xl md:text-5xl font-semibold text-accent mb-10 drop-shadow-sm">
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-semibold text-accent mb-10 drop-shadow-sm">
             কোরবানি সাথী
           </h2>
 
           <div className="space-y-2 mb-12">
-            <p className="text-xl md:text-2xl font-medium opacity-90">
+            <p className="text-base sm:text-lg md:text-2xl font-medium opacity-90">
               {t("tagline_en")}
             </p>
-            <p className="text-lg md:text-xl text-accent/90">
+            <p className="text-sm sm:text-base md:text-xl text-accent/90">
               {t("tagline_bn")}
             </p>
           </div>
@@ -78,20 +78,20 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full px-6 md:px-0">
               <Link
                 href="/register"
-                className="w-full sm:w-auto px-10 py-4 bg-accent text-[#0F3D22] font-bold rounded-2xl text-lg hover:scale-105 active:scale-95 transition-all shadow-xl shadow-accent/20"
+                className="w-full sm:w-auto px-10 py-4 min-h-14 flex items-center justify-center bg-accent text-[#0F3D22] font-bold rounded-2xl text-lg hover:scale-105 active:scale-95 transition-all shadow-xl shadow-accent/20"
               >
                 {t("register_cta")}
               </Link>
               <Link
                 href="/map"
-                className="w-full sm:w-auto px-10 py-4 border-2 border-white/30 text-white font-bold rounded-2xl text-lg hover:bg-white/10 transition-all backdrop-blur-sm"
+                className="w-full sm:w-auto px-10 py-4 min-h-14 flex items-center justify-center border-2 border-white/30 text-white font-bold rounded-2xl text-lg hover:bg-white/10 transition-all backdrop-blur-sm"
               >
                 {t("browse_map")}
               </Link>
             </div>
-            <Link 
-              href="/login" 
-              className="text-white/80 hover:text-accent font-bold text-lg transition-all group flex items-center gap-2 border-2 border-white/30 hover:border-accent/50 px-10 py-3 rounded-2xl backdrop-blur-sm"
+            <Link
+              href="/login"
+              className="text-white/80 hover:text-accent font-bold text-lg transition-all group flex items-center gap-2 min-h-12 border-2 border-white/30 hover:border-accent/50 px-10 py-3 rounded-2xl backdrop-blur-sm"
             >
               {ta("login")}
               <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -99,11 +99,11 @@ export default function LandingPage() {
           </div>
 
           {/* Countdown Timer */}
-          <div className="bg-black/20 backdrop-blur-md rounded-3xl p-6 md:p-8 inline-flex flex-col items-center border border-white/10">
+          <div className="bg-black/20 backdrop-blur-md rounded-3xl p-4 sm:p-6 md:p-8 inline-flex flex-col items-center border border-white/10">
             <p className="text-accent text-xs font-bold uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
               <Timer className="w-4 h-4" /> {t("countdown_label")}
             </p>
-            <div className="flex gap-4 md:gap-8">
+            <div className="flex gap-3 sm:gap-4 md:gap-8">
               <TimerUnit value={timeLeft.days} label={t("days")} />
               <TimerUnit value={timeLeft.hours} label={t("hours")} />
               <TimerUnit value={timeLeft.minutes} label={t("mins")} />
@@ -114,7 +114,7 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-24 px-6 max-w-6xl mx-auto">
+      <section className="py-16 md:py-24 px-6 max-w-6xl mx-auto">
         <div className="text-center mb-16">
           <h3 className="text-3xl md:text-4xl font-bold text-text-primary mb-2">
             {t("how_title")}
@@ -122,17 +122,20 @@ export default function LandingPage() {
           <div className="w-20 h-1.5 bg-primary mx-auto rounded-full" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* grid-cols-[1fr_auto_1fr_auto_1fr] inserts arrow columns between cards on md+ */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto_1fr] gap-8 md:gap-4 md:items-center">
           <StepCard
             icon={<MapPin className="w-8 h-8 text-primary" />}
             title={t("step1_title")}
             desc={t("step1_desc")}
           />
+          <ChevronRight className="hidden md:block w-8 h-8 text-primary/30 mx-auto" />
           <StepCard
             icon={<Beef className="w-8 h-8 text-primary" />}
             title={t("step2_title")}
             desc={t("step2_desc")}
           />
+          <ChevronRight className="hidden md:block w-8 h-8 text-primary/30 mx-auto" />
           <StepCard
             icon={<Users className="w-8 h-8 text-primary" />}
             title={t("step3_title")}
@@ -142,7 +145,7 @@ export default function LandingPage() {
       </section>
 
       {/* Why QurbaniSathi Section */}
-      <section className="py-24 px-6 bg-background">
+      <section className="py-16 md:py-24 px-6 bg-surface-muted">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h3 className="text-3xl md:text-4xl font-bold text-text-primary mb-2">
@@ -151,7 +154,7 @@ export default function LandingPage() {
             <div className="w-20 h-1.5 bg-accent mx-auto rounded-full" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <FeatureCard
               icon={<Heart className="w-6 h-6 text-white" />}
               title={t("free")}
@@ -174,7 +177,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="bg-[#0F3D22] text-white py-16 px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between gap-12 mb-12">
+          <div className="flex flex-col md:flex-row justify-between gap-8 md:gap-12 mb-8 md:mb-12">
             <div className="max-w-xs">
               <Logo className="mb-4" />
               <p className="opacity-70 text-sm leading-relaxed">
@@ -199,7 +202,7 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-          <div className="pt-12 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs opacity-50">
+          <div className="pt-8 md:pt-12 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs opacity-50">
             <p>{t("copyright")}</p>
             <p className="flex items-center gap-1">
               {t("made_with_love")}
@@ -209,7 +212,10 @@ export default function LandingPage() {
       </footer>
 
       {/* Floating CTA - Mobile */}
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full px-6">
+      <div
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-6"
+        style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 1.5rem))" }}
+      >
         <Link
           href="/map"
           className="w-full bg-accent text-[#0F3D22] font-bold py-4 rounded-2xl shadow-2xl flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
@@ -224,7 +230,7 @@ export default function LandingPage() {
 function TimerUnit({ value, label }: { value: number, label: string }) {
   return (
     <div className="flex flex-col items-center">
-      <span className="text-3xl md:text-5xl font-black text-accent tabular-nums">
+      <span className="text-3xl sm:text-4xl md:text-5xl font-black text-accent tabular-nums">
         {value.toString().padStart(2, "0")}
       </span>
       <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest opacity-60">
@@ -236,7 +242,7 @@ function TimerUnit({ value, label }: { value: number, label: string }) {
 
 function StepCard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
   return (
-    <div className="group bg-white p-8 rounded-3xl border border-border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
+    <div className="group bg-white p-6 md:p-8 rounded-3xl border border-border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
       <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
         {icon}
       </div>

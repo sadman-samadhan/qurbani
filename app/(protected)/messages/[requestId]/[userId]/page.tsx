@@ -195,7 +195,7 @@ export default function ThreadPage() {
       <div className="bg-white px-4 py-3 flex items-center gap-3 border-b border-border">
         <button
           onClick={() => router.back()}
-          className="p-1.5 rounded-xl hover:bg-background transition-colors flex-shrink-0"
+          className="p-1.5 rounded-xl hover:bg-background active:scale-95 transition-all flex-shrink-0"
         >
           <ArrowLeft className="w-5 h-5 text-text-primary" />
         </button>
@@ -214,7 +214,7 @@ export default function ThreadPage() {
         </div>
         <button
           onClick={handleLangToggle}
-          className="flex items-center gap-1 text-sm font-bold text-text-muted hover:text-primary flex-shrink-0"
+          className="flex items-center gap-1 text-sm font-bold text-text-muted hover:text-primary active:scale-95 transition-all flex-shrink-0"
         >
           <Globe className="w-4 h-4" />
           {locale === "en" ? "বাংলা" : "EN"}
@@ -246,46 +246,49 @@ export default function ThreadPage() {
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <LoadingSpinner />
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-text-muted text-center px-8">
-              {locale === "en"
-                ? "Send your first message about this listing"
-                : "এই পোস্ট নিয়ে প্রথম মেসেজ পাঠান"}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {messages.map(msg => {
-              const isMe = msg.sender_id === currentUserId;
-              return (
-                <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm ${
-                      isMe
-                        ? "bg-primary text-white rounded-br-sm"
-                        : "bg-white border border-border text-text-primary rounded-bl-sm"
-                    }`}
-                  >
-                    <p className="break-words">{msg.content}</p>
-                    <p className={`text-[10px] mt-1 ${isMe ? "text-white/70" : "text-text-muted"}`}>
-                      {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
-                    </p>
+        <div className="max-w-2xl mx-auto">
+          {loading ? (
+            <div className="flex items-center justify-center h-40">
+              <LoadingSpinner />
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex items-center justify-center h-40">
+              <p className="text-sm text-text-muted text-center px-8">
+                {locale === "en"
+                  ? "Send your first message about this listing"
+                  : "এই পোস্ট নিয়ে প্রথম মেসেজ পাঠান"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {messages.map(msg => {
+                const isMe = msg.sender_id === currentUserId;
+                return (
+                  <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`max-w-[80%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl text-sm ${
+                        isMe
+                          ? "bg-primary text-white rounded-br-sm"
+                          : "bg-white border border-border text-text-primary rounded-bl-sm"
+                      }`}
+                    >
+                      <p className="break-words">{msg.content}</p>
+                      <p className={`text-[10px] mt-1 ${isMe ? "text-white/70" : "text-text-muted"}`}>
+                        {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-            <div ref={bottomRef} />
-          </div>
-        )}
+                );
+              })}
+              <div ref={bottomRef} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Input */}
-      <div className="bg-white border-t border-border px-4 py-3 flex items-end gap-3">
+      <div className="bg-white border-t border-border px-4 py-3">
+        <div className="max-w-2xl mx-auto flex items-end gap-3">
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
@@ -296,7 +299,7 @@ export default function ThreadPage() {
             }
           }}
           placeholder={tc("type_message")}
-          className="flex-1 resize-none border border-border rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 font-hind max-h-24 bg-background"
+          className="flex-1 resize-none border border-border rounded-2xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-primary/30 font-hind max-h-24 bg-background"
           rows={1}
         />
         <button
@@ -306,6 +309,7 @@ export default function ThreadPage() {
         >
           <Send className="w-4 h-4" />
         </button>
+        </div>
       </div>
     </div>
   );

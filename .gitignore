@@ -37,3 +37,4 @@ next-env.d.ts
 private_docs/ 
 CLAUDE.md 
 supabase/
+.playwright-mcp/ 

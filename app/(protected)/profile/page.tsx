@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, User, Phone, MapPin, Globe, Lock,
-  LogOut, Check, Edit2, ChevronRight, X
+  LogOut, Check, Edit2, ChevronRight, X, Map as MapIcon, ClipboardList, MessageCircle, Plus
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import Logo from "@/components/ui/Logo";
 import { useTranslations, useLocale } from "next-intl";
 import { setLocale } from "@/app/actions/locale";
 
@@ -131,17 +132,54 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-background font-hind pb-20">
-      {/* Header */}
-      <div className="bg-white px-4 py-4 flex items-center gap-4 border-b border-border sticky top-0 z-10">
-        <button onClick={() => router.back()} className="p-2 hover:bg-background rounded-full transition-colors">
-          <ArrowLeft className="w-6 h-6 text-text-primary" />
-        </button>
-        <h1 className="text-xl font-bold text-text-primary">
-          {tp("title")}
-        </h1>
+      {/* Header — mobile: back arrow | desktop: full nav */}
+      <div className="bg-white px-4 lg:px-6 py-3 flex items-center justify-between border-b border-border sticky top-0 z-10">
+        {/* Mobile: back + title */}
+        <div className="flex items-center gap-3 lg:hidden">
+          <button onClick={() => router.back()} className="p-2 hover:bg-background rounded-full active:scale-95 transition-all">
+            <ArrowLeft className="w-6 h-6 text-text-primary" />
+          </button>
+          <h1 className="text-xl font-bold text-text-primary">{tp("title")}</h1>
+        </div>
+
+        {/* Desktop: logo */}
+        <div className="hidden lg:block">
+          <Logo width={32} height={32} />
+        </div>
+
+        {/* Desktop nav */}
+        <nav className="hidden lg:flex items-center gap-1">
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="flex items-center gap-2 px-4 py-2 text-text-muted hover:text-primary hover:bg-primary/5 text-sm font-medium rounded-xl transition-colors"
+          >
+            <MapIcon className="w-4 h-4" /> Map
+          </button>
+          <button
+            onClick={() => router.push("/my-requests")}
+            className="flex items-center gap-2 px-4 py-2 text-text-muted hover:text-primary hover:bg-primary/5 text-sm font-medium rounded-xl transition-colors"
+          >
+            <ClipboardList className="w-4 h-4" /> My Posts
+          </button>
+          <button
+            onClick={() => router.push("/messages")}
+            className="flex items-center gap-2 px-4 py-2 text-text-muted hover:text-primary hover:bg-primary/5 text-sm font-medium rounded-xl transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" /> Messages
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2 text-primary font-bold text-sm rounded-xl bg-primary/10">
+            <User className="w-4 h-4" /> {tp("title")}
+          </button>
+          <Link
+            href="/post-request"
+            className="ml-2 flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-primary-light active:scale-95 transition-all shadow-sm shadow-primary/20"
+          >
+            <Plus className="w-4 h-4" /> New Request
+          </Link>
+        </nav>
       </div>
 
-      <div className="max-w-xl mx-auto p-4 space-y-6">
+      <div className="max-w-xl lg:max-w-2xl mx-auto p-4 space-y-6">
         {/* Section 1: Identity */}
         <div className="bg-white rounded-2xl border border-border shadow-sm p-6 overflow-hidden">
           <div className="flex flex-col items-center mb-6">
@@ -153,7 +191,7 @@ export default function ProfilePage() {
               {isEditingName ? (
                 <div className="flex items-center gap-2 max-w-xs mx-auto">
                   <input
-                    className="flex-1 px-3 py-2 border border-border rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    className="flex-1 px-3 py-2 text-base border border-border rounded-xl focus:ring-2 focus:ring-primary outline-none"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     autoFocus
@@ -161,7 +199,7 @@ export default function ProfilePage() {
                   <button
                     onClick={handleUpdateName}
                     disabled={updatingName}
-                    className="p-2 bg-primary text-white rounded-xl"
+                    className="p-2 bg-primary text-white rounded-xl active:scale-95 transition-all"
                   >
                     {updatingName ? (
                       <div className="scale-50">
@@ -169,7 +207,7 @@ export default function ProfilePage() {
                       </div>
                     ) : <Check className="w-4 h-4" />}
                   </button>
-                  <button onClick={() => setIsEditingName(false)} className="p-2 bg-background rounded-xl">
+                  <button onClick={() => setIsEditingName(false)} className="p-2 bg-background rounded-xl active:scale-95 transition-all">
                     <X className="w-4 h-4 text-text-muted" />
                   </button>
                 </div>
@@ -178,7 +216,7 @@ export default function ProfilePage() {
                   <h2 className="text-xl font-bold text-text-primary">
                     {profile.full_name || tp("add_name")}
                   </h2>
-                  <button onClick={() => setIsEditingName(true)} className="p-1 hover:bg-background rounded-lg text-text-muted transition-colors">
+                  <button onClick={() => setIsEditingName(true)} className="p-1 hover:bg-background rounded-lg text-text-muted active:scale-95 transition-all">
                     <Edit2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -197,7 +235,7 @@ export default function ProfilePage() {
             <MapPin className="w-4 h-4 text-primary" /> {tp("location_section")}
           </h3>
           <div className="flex gap-4 items-center bg-background p-3 rounded-2xl border border-border">
-            <div className="w-20 h-20 rounded-xl flex-shrink-0 overflow-hidden">
+            <div className="w-28 h-28 rounded-xl flex-shrink-0 overflow-hidden">
               {profile?.latitude && profile?.longitude ? (
                 <LeafletMap
                   center={{ lat: profile.latitude, lng: profile.longitude }}
@@ -229,7 +267,7 @@ export default function ProfilePage() {
           </h3>
           <button
             onClick={toggleLanguage}
-            className="w-full flex items-center justify-between p-4 bg-background rounded-2xl border border-border hover:border-primary transition-all group"
+            className="w-full flex items-center justify-between p-4 bg-background rounded-2xl border border-border hover:border-primary active:scale-[0.99] transition-all group"
           >
             <span className="font-bold text-text-primary">
               {tp(locale === "en" ? "lang_en" : "lang_bn")}
@@ -249,7 +287,7 @@ export default function ProfilePage() {
             <input
               type="password"
               placeholder={tp("new_password")}
-              className="w-full px-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none"
+              className="w-full px-4 h-12 text-base rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none"
               value={passwordForm.new}
               onChange={(e) => setPasswordForm({ ...passwordForm, new: e.target.value })}
               required
@@ -257,14 +295,14 @@ export default function ProfilePage() {
             <input
               type="password"
               placeholder={tp("confirm_password")}
-              className="w-full px-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none"
+              className="w-full px-4 h-12 text-base rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none"
               value={passwordForm.confirm}
               onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
               required
             />
             <button
               disabled={updatingPassword}
-              className="w-full py-3 bg-background text-text-primary font-bold rounded-xl border border-border hover:bg-border transition-all flex items-center justify-center gap-2 h-12"
+              className="w-full bg-background text-text-primary font-bold rounded-xl border border-border hover:bg-border active:scale-95 transition-all flex items-center justify-center gap-2 h-12"
             >
               {updatingPassword ? (
                 <div className="scale-50">
@@ -278,7 +316,7 @@ export default function ProfilePage() {
         {/* Section 5: Logout */}
         <button
           onClick={handleLogout}
-          className="w-full py-4 border-2 border-error text-error rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-error/5 transition-all mb-10"
+          className="w-full py-4 border-2 border-error text-error rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-error/5 active:scale-[0.99] transition-all mb-10"
         >
           <LogOut className="w-5 h-5" /> {tp("logout")}
         </button>

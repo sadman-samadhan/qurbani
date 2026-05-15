@@ -9,13 +9,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: "#1B6B3A",
-        accent: "#D4AF37",
+        primary: { DEFAULT: "#1B6B3A", light: "#2D8A4E", lighter: "#E8F5ED", dark: "#0F3D22" },
+        accent:  { DEFAULT: "#D4AF37", light: "#F0D875", lighter: "#FDF8E7", dark: "#A88A22" },
+        surface: { DEFAULT: "#FFFFFF", warm: "#FFFDF5", muted: "#F7F5F0" },
         background: "#FFFDF5",
+        text: { primary: "#1A1A1A", secondary: "#374151", muted: "#6B7280", inverse: "#FFFFFF" },
         "text-primary": "#1A1A1A",
         "text-muted": "#6B7280",
-        border: "#E5E0D5",
+        border: { DEFAULT: "#E5E0D5", light: "#F0EDE8", strong: "#C8C2B8" },
         error: "#DC2626",
+        success: "#16A34A",
       },
       fontFamily: {
         hind: ["var(--font-hind-siliguri)", "sans-serif"],

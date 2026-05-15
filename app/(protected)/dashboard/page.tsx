@@ -162,12 +162,56 @@ export default function DashboardPage() {
     };
   }, [profile]);
 
+  const handleCardClick = (req: any) => {
+    setSelectedRequest(req);
+    setMapCenter([req.latitude, req.longitude]);
+  };
+
   return (
-    <div className="flex flex-col h-screen bg-background font-hind relative overflow-hidden">
-      {/* Top Bar */}
-      <div className="bg-white px-4 py-3 flex items-center justify-between border-b border-border z-10">
+    <div className="flex flex-col h-screen lg:h-auto lg:min-h-screen bg-background font-hind relative overflow-hidden lg:overflow-visible">
+      {/* Top Bar — mobile: minimal | desktop: full nav */}
+      <div className="bg-white px-4 lg:px-6 py-3 flex items-center justify-between border-b border-border z-10">
         <Logo width={32} height={32} />
-        <div className="flex items-center gap-4">
+
+        <div className="flex items-center gap-3">
+          {/* Desktop nav links */}
+          <nav className="hidden lg:flex items-center gap-1">
+            <button className="flex items-center gap-2 px-4 py-2 text-primary font-bold text-sm rounded-xl bg-primary/10">
+              <MapIcon className="w-4 h-4" /> {td("map")}
+            </button>
+            <button
+              onClick={() => router.push("/my-requests")}
+              className="flex items-center gap-2 px-4 py-2 text-text-muted hover:text-primary hover:bg-primary/5 text-sm font-medium rounded-xl transition-colors"
+            >
+              <ClipboardList className="w-4 h-4" /> {td("my_posts")}
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => router.push("/messages")}
+                className="flex items-center gap-2 px-4 py-2 text-text-muted hover:text-primary hover:bg-primary/5 text-sm font-medium rounded-xl transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" /> {td("messages")}
+              </button>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 right-0 bg-error text-[8px] text-white px-1.5 py-0.5 rounded-full font-bold min-w-[16px] text-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => router.push("/profile")}
+              className="flex items-center gap-2 px-4 py-2 text-text-muted hover:text-primary hover:bg-primary/5 text-sm font-medium rounded-xl transition-colors"
+            >
+              <User className="w-4 h-4" /> {td("profile")}
+            </button>
+            <button
+              onClick={() => router.push("/post-request")}
+              className="ml-2 flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-primary-light active:scale-95 transition-all shadow-sm shadow-primary/20"
+            >
+              <Plus className="w-4 h-4" /> {td("post_new")}
+            </button>
+          </nav>
+
           <button
             onClick={handleLangToggle}
             className="flex items-center gap-1 text-sm font-bold text-text-muted hover:text-primary"
@@ -175,12 +219,23 @@ export default function DashboardPage() {
             <Globe className="w-4 h-4" />
             {locale === "en" ? "বাংলা" : "EN"}
           </button>
-          <Bell className="w-6 h-6 text-border cursor-not-allowed" />
+          <Bell className="w-6 h-6 text-border cursor-not-allowed lg:hidden" />
+          {/* Desktop profile avatar */}
+          {profile && (
+            <button
+              onClick={() => router.push("/profile")}
+              className="hidden lg:flex w-9 h-9 bg-primary/10 rounded-full items-center justify-center border-2 border-primary/20 hover:border-primary/40 transition-colors"
+            >
+              <span className="text-sm font-bold text-primary">
+                {profile.full_name?.[0] || "?"}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Map Section */}
-      <div className="relative h-[55vh] flex-shrink-0">
+      <div className="relative h-[50vh] sm:h-[55vh] min-h-[300px] lg:h-[60vh] flex-shrink-0">
         {profile && mapCenter && (
           <DashboardMap
             center={mapCenter}
@@ -199,25 +254,20 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Nearby Listings Horizontal Scroll */}
-      <div className="p-4 overflow-hidden">
+      {/* Nearby Listings */}
+      <div className="p-4 lg:px-6 lg:py-6 overflow-hidden lg:overflow-visible">
         <h2 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
           <Image src="/images/cow.png" alt="" width={16} height={16} className="object-contain" />
           {td("nearby")}
         </h2>
-        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+
+        {/* Mobile: horizontal scroll */}
+        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar lg:hidden">
           {loading ? (
             [1, 2, 3].map(i => <SkeletonCard key={i} />)
           ) : nearbyRequests.length > 0 ? (
             nearbyRequests.map(req => (
-              <RequestCard
-                key={req.id}
-                request={req}
-                onClick={() => {
-                  setSelectedRequest(req);
-                  setMapCenter([req.latitude, req.longitude]);
-                }}
-              />
+              <RequestCard key={req.id} request={req} onClick={() => handleCardClick(req)} />
             ))
           ) : (
             <div className="w-full py-8 text-center bg-white rounded-2xl border border-dashed border-border">
@@ -226,13 +276,29 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {/* Desktop: 4-column grid */}
+        <div className="hidden lg:grid lg:grid-cols-4 gap-4">
+          {loading ? (
+            [1, 2, 3, 4].map(i => <SkeletonCard key={i} className="" />)
+          ) : nearbyRequests.length > 0 ? (
+            nearbyRequests.map(req => (
+              <RequestCard key={req.id} request={req} className="" onClick={() => handleCardClick(req)} />
+            ))
+          ) : (
+            <div className="col-span-4 py-8 text-center bg-white rounded-2xl border border-dashed border-border">
+              <span className="text-4xl mb-2 block">🐄</span>
+              <p className="text-text-muted">{td("no_requests")}</p>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* FAB */}
-      <div className="absolute bottom-24 right-4 z-20">
+      {/* FAB — mobile only */}
+      <div className="absolute bottom-24 right-4 z-20 lg:hidden">
         <button
           onClick={() => router.push("/post-request")}
-          className="group relative bg-primary text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+          className="group relative bg-primary text-white w-16 h-16 rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
         >
           <Plus className="w-8 h-8" />
           <span className="absolute right-full mr-3 bg-white text-primary text-xs font-bold px-3 py-2 rounded-lg shadow-md border border-border whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
@@ -241,26 +307,26 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Bottom Nav */}
-      <div className="bg-white border-t border-border mt-auto flex items-center justify-around py-3 px-2 z-10">
-        <NavButton icon={<MapIcon />} label={td("map")} active />
-        <NavButton icon={<ClipboardList />} label={td("my_posts")} onClick={() => router.push("/my-requests")} />
+      {/* Bottom Nav — mobile only */}
+      <div className="bg-white border-t border-border mt-auto flex items-center justify-around pt-4 px-2 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] z-10 lg:hidden">
+        <NavButton icon={<MapIcon className="w-6 h-6" />} label={td("map")} active />
+        <NavButton icon={<ClipboardList className="w-6 h-6" />} label={td("my_posts")} onClick={() => router.push("/my-requests")} />
         <div className="relative group">
-          <NavButton icon={<MessageCircle />} label={td("messages")} onClick={() => router.push("/messages")} />
+          <NavButton icon={<MessageCircle className="w-6 h-6" />} label={td("messages")} onClick={() => router.push("/messages")} />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-error text-[8px] text-white px-1.5 py-0.5 rounded-full font-bold min-w-[16px] text-center">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
         </div>
-        <NavButton icon={<User />} label={td("profile")} onClick={() => router.push("/profile")} />
+        <NavButton icon={<User className="w-6 h-6" />} label={td("profile")} onClick={() => router.push("/profile")} />
       </div>
 
       {/* Bottom Sheet Details */}
       {selectedRequest && (
         <div className="fixed inset-0 z-[9999] pointer-events-none">
           <div className="absolute inset-0 bg-black/20 pointer-events-auto" onClick={() => setSelectedRequest(null)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[2.5rem] shadow-2xl animate-in slide-in-from-bottom duration-300 pointer-events-auto max-h-[85vh] flex flex-col">
+          <div className="absolute bottom-0 inset-x-0 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-[512px] bg-white rounded-t-[2.5rem] shadow-2xl animate-in slide-in-from-bottom duration-300 pointer-events-auto max-h-[85vh] flex flex-col">
             <div className="w-12 h-1.5 bg-border rounded-full mx-auto my-4 flex-shrink-0" />
             <div className="overflow-y-auto px-6 pt-2 pb-8">
               <div className="flex items-center gap-4 mb-6">
@@ -370,7 +436,7 @@ export default function DashboardPage() {
                 );
               })()}
 
-              <button className="w-full text-text-muted text-xs flex items-center justify-center gap-1 hover:text-error transition-colors">
+              <button className="w-full text-text-muted text-xs flex items-center justify-center gap-1 hover:text-error active:scale-95 transition-all py-2">
                 <AlertCircle className="w-3 h-3" /> {tm("report")}
               </button>
             </div>
@@ -386,7 +452,7 @@ function NavButton({ icon, label, active = false, disabled = false, onClick }: a
     <button
       disabled={disabled}
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 transition-colors ${active ? "text-primary" : "text-text-muted hover:text-primary"
+      className={`flex flex-col items-center gap-1 min-w-[56px] min-h-[44px] justify-center active:scale-95 transition-all ${active ? "text-primary" : "text-text-muted hover:text-primary"
         } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
     >
       <div className={`p-1.5 rounded-xl transition-all ${active ? "bg-primary/10" : ""}`}>
@@ -397,14 +463,14 @@ function NavButton({ icon, label, active = false, disabled = false, onClick }: a
   );
 }
 
-function RequestCard({ request, onClick }: any) {
+function RequestCard({ request, onClick, className = "flex-shrink-0 w-64 sm:w-72" }: any) {
   const router = useRouter();
   const tm = useTranslations("map_page");
 
   return (
     <div
       onClick={onClick}
-      className="flex-shrink-0 w-64 bg-white border border-border rounded-2xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer"
+      className={`${className} bg-white border border-border rounded-2xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer`}
     >
       <div className="flex justify-between items-start mb-3">
         <div className="bg-primary/10 text-primary px-2 py-1 rounded-lg text-[10px] font-bold uppercase">
@@ -435,7 +501,7 @@ function RequestCard({ request, onClick }: any) {
               window.open(`https://wa.me/88${request.whatsapp_number || request.phone_number}`, "_blank");
             }
           }}
-          className="bg-primary text-white p-2 rounded-xl"
+          className="bg-primary text-white p-2 rounded-xl active:scale-95 transition-all"
         >
           {request.hide_phone ? <MessageCircle className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
         </button>
@@ -467,9 +533,9 @@ function InfoItem({ label, value }: any) {
   );
 }
 
-function SkeletonCard() {
+function SkeletonCard({ className = "flex-shrink-0 w-64" }: { className?: string }) {
   return (
-    <div className="flex-shrink-0 w-64 bg-white border border-border rounded-2xl p-4 animate-pulse">
+    <div className={`${className} bg-white border border-border rounded-2xl p-4 animate-pulse`}>
       <div className="w-20 h-4 bg-background rounded-lg mb-3" />
       <div className="w-full h-8 bg-background rounded-lg mb-3" />
       <div className="flex justify-between items-center mt-4">

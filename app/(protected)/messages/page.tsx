@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MessageCircle, Globe } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, MessageCircle, Globe, Map as MapIcon, ClipboardList, User, Plus } from "lucide-react";
+import Logo from "@/components/ui/Logo";
 import { supabase } from "@/lib/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -129,24 +131,65 @@ export default function MessagesPage() {
 
   return (
     <div className="flex flex-col h-screen bg-background font-hind">
-      {/* Header */}
-      <div className="bg-white px-4 py-3 flex items-center justify-between border-b border-border">
-        <div className="flex items-center gap-3">
+      {/* Header — mobile: back arrow | desktop: full nav */}
+      <div className="bg-white px-4 lg:px-6 py-3 flex items-center justify-between border-b border-border">
+        {/* Mobile: back + title */}
+        <div className="flex items-center gap-3 lg:hidden">
           <button
             onClick={() => router.back()}
-            className="p-1.5 rounded-xl hover:bg-background transition-colors"
+            className="p-1.5 rounded-xl hover:bg-background active:scale-95 transition-all"
           >
             <ArrowLeft className="w-5 h-5 text-text-primary" />
           </button>
           <h1 className="text-lg font-bold text-text-primary">{tc("title")}</h1>
         </div>
-        <button
-          onClick={handleLangToggle}
-          className="flex items-center gap-1 text-sm font-bold text-text-muted hover:text-primary"
-        >
-          <Globe className="w-4 h-4" />
-          {locale === "en" ? "বাংলা" : "EN"}
-        </button>
+
+        {/* Desktop: logo */}
+        <div className="hidden lg:block">
+          <Logo width={32} height={32} />
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Desktop nav */}
+          <nav className="hidden lg:flex items-center gap-1">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="flex items-center gap-2 px-4 py-2 text-text-muted hover:text-primary hover:bg-primary/5 text-sm font-medium rounded-xl transition-colors"
+            >
+              <MapIcon className="w-4 h-4" /> Map
+            </button>
+            <button
+              onClick={() => router.push("/my-requests")}
+              className="flex items-center gap-2 px-4 py-2 text-text-muted hover:text-primary hover:bg-primary/5 text-sm font-medium rounded-xl transition-colors"
+            >
+              <ClipboardList className="w-4 h-4" /> My Posts
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 text-primary font-bold text-sm rounded-xl bg-primary/10">
+              <MessageCircle className="w-4 h-4" /> {tc("title")}
+            </button>
+            <button
+              onClick={() => router.push("/profile")}
+              className="flex items-center gap-2 px-4 py-2 text-text-muted hover:text-primary hover:bg-primary/5 text-sm font-medium rounded-xl transition-colors"
+            >
+              <User className="w-4 h-4" /> Profile
+            </button>
+            <Link
+              href="/post-request"
+              className="ml-2 flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-primary-light active:scale-95 transition-all shadow-sm shadow-primary/20"
+            >
+              <Plus className="w-4 h-4" /> New Request
+            </Link>
+          </nav>
+
+          {/* Lang toggle */}
+          <button
+            onClick={handleLangToggle}
+            className="flex items-center gap-1 text-sm font-bold text-text-muted hover:text-primary active:scale-95 transition-all"
+          >
+            <Globe className="w-4 h-4" />
+            {locale === "en" ? "বাংলা" : "EN"}
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -170,7 +213,7 @@ export default function MessagesPage() {
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="max-w-2xl mx-auto w-full divide-y divide-border">
             {conversations.map(conv => (
               <ConversationCard
                 key={conv.key}
@@ -211,7 +254,7 @@ function ConversationCard({
   return (
     <button
       onClick={onClick}
-      className="w-full px-4 py-4 flex items-center gap-3 hover:bg-background/80 transition-colors text-left"
+      className="w-full px-4 py-4 flex items-center gap-3 hover:bg-background/80 active:scale-[0.99] transition-all text-left"
     >
       <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
         <span className="text-lg font-bold text-primary">{initial}</span>
