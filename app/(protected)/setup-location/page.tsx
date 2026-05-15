@@ -177,7 +177,7 @@ export default function SetupLocationPage() {
           {/* Card 1: GPS */}
           <button
             onClick={handleGPS}
-            className={`p-6 rounded-2xl border-2 transition-all text-left flex flex-col items-center gap-3 ${
+            className={`p-6 rounded-2xl border-2 transition-all active:scale-95 text-left flex flex-col items-center gap-3 ${
               method === "gps" ? "border-primary bg-primary/5" : "border-border bg-white hover:border-primary/50"
             }`}
           >
@@ -193,7 +193,7 @@ export default function SetupLocationPage() {
           {/* Card 2: Search */}
           <button
             onClick={() => { setMethod("search"); setLocation(null); }}
-            className={`p-6 rounded-2xl border-2 transition-all text-left flex flex-col items-center gap-3 ${
+            className={`p-6 rounded-2xl border-2 transition-all active:scale-95 text-left flex flex-col items-center gap-3 ${
               method === "search" ? "border-primary bg-primary/5" : "border-border bg-white hover:border-primary/50"
             }`}
           >
@@ -209,7 +209,7 @@ export default function SetupLocationPage() {
           {/* Card 3: Map */}
           <button
             onClick={() => { setMethod("map"); setLocation(null); }}
-            className={`p-6 rounded-2xl border-2 transition-all text-left flex flex-col items-center gap-3 ${
+            className={`p-6 rounded-2xl border-2 transition-all active:scale-95 text-left flex flex-col items-center gap-3 ${
               method === "map" ? "border-primary bg-primary/5" : "border-border bg-white hover:border-primary/50"
             }`}
           >
@@ -224,7 +224,7 @@ export default function SetupLocationPage() {
         </div>
 
         {/* Dynamic Section */}
-        <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-warm min-h-[400px] flex flex-col">
+        <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-warm min-h-[400px] sm:min-h-[480px] flex flex-col">
           {method === "gps" && (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
               {loading ? (
@@ -262,7 +262,7 @@ export default function SetupLocationPage() {
                 <input
                   type="text"
                   placeholder={t("placeholder")}
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all"
+                  className="w-full pl-12 pr-4 py-3 text-base rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all"
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                 />
@@ -293,7 +293,7 @@ export default function SetupLocationPage() {
           )}
 
           {method === "map" && (
-            <div className="flex-1 relative min-h-[400px]">
+            <div className="flex-1 relative min-h-[50vh] sm:min-h-[60vh]">
               <LeafletMap
                 center={location ? { lat: location.lat, lng: location.lng } : (profileLocation || MAP_CONFIG.defaultCenter)}
                 markers={location ? [{ lat: location.lat, lng: location.lng }] : []}
@@ -321,7 +321,7 @@ export default function SetupLocationPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="w-full md:w-auto bg-primary text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-opacity-90 transition-all shadow-md shadow-primary/20 h-12"
+                  className="w-full md:w-auto bg-primary text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-light active:scale-95 transition-all shadow-md shadow-primary/20 h-12"
                 >
                   {saving ? (
                     <div className="scale-50">

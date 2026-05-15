@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, CheckCircle2, Trash2, Clock, MapPin,
-  Plus, AlertTriangle, Pencil
+  Plus, AlertTriangle, Pencil, ClipboardList, MessageCircle, User, Map as MapIcon
 } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import toast from "react-hot-toast";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { Skeleton } from "@/components/ui/skeleton";
+import Logo from "@/components/ui/Logo";
 import { useTranslations } from "next-intl";
 
 export default function MyRequestsPage() {
@@ -72,88 +74,143 @@ export default function MyRequestsPage() {
 
   return (
     <div className="min-h-screen bg-background font-hind pb-10">
-      <div className="bg-white px-4 py-4 flex items-center justify-between border-b border-border sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <button onClick={() => router.back()} className="p-2 hover:bg-background rounded-full transition-colors">
-            <ArrowLeft className="w-6 h-6 text-text-primary" />
+      {/* Header — mobile: back arrow | desktop: full nav */}
+      <div className="bg-white px-4 lg:px-6 py-3 flex items-center justify-between border-b border-border sticky top-0 z-10">
+        {/* Mobile: back + title */}
+        <div className="flex items-center gap-3 lg:hidden">
+          <button onClick={() => router.back()} className="p-2 hover:bg-background rounded-full transition-colors active:scale-95">
+            <ArrowLeft className="w-5 h-5 text-text-primary" />
           </button>
-          <h1 className="text-xl font-bold text-text-primary">
-            {t("title")}
-          </h1>
+          <h1 className="text-lg font-bold text-text-primary">{t("title")}</h1>
         </div>
-        <Link 
+
+        {/* Desktop: logo */}
+        <div className="hidden lg:block">
+          <Logo width={32} height={32} />
+        </div>
+
+        {/* Desktop nav */}
+        <nav className="hidden lg:flex items-center gap-1">
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="flex items-center gap-2 px-4 py-2 text-text-muted hover:text-primary hover:bg-primary/5 text-sm font-medium rounded-xl transition-colors"
+          >
+            <MapIcon className="w-4 h-4" /> Map
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2 text-primary font-bold text-sm rounded-xl bg-primary/10">
+            <ClipboardList className="w-4 h-4" /> {t("title")}
+          </button>
+          <button
+            onClick={() => router.push("/messages")}
+            className="flex items-center gap-2 px-4 py-2 text-text-muted hover:text-primary hover:bg-primary/5 text-sm font-medium rounded-xl transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" /> Messages
+          </button>
+          <button
+            onClick={() => router.push("/profile")}
+            className="flex items-center gap-2 px-4 py-2 text-text-muted hover:text-primary hover:bg-primary/5 text-sm font-medium rounded-xl transition-colors"
+          >
+            <User className="w-4 h-4" /> Profile
+          </button>
+          <Link
+            href="/post-request"
+            className="ml-2 flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-primary-light active:scale-95 transition-all shadow-sm shadow-primary/20"
+          >
+            <Plus className="w-4 h-4" /> New Request
+          </Link>
+        </nav>
+
+        {/* Mobile: add button */}
+        <Link
           href="/post-request"
-          className="p-2 bg-primary text-white rounded-xl shadow-md active:scale-95 transition-all"
+          className="lg:hidden p-2 bg-primary text-white rounded-xl shadow-md active:scale-95 transition-all"
         >
-          <Plus className="w-6 h-6" />
+          <Plus className="w-5 h-5" />
         </Link>
       </div>
 
-      <div className="max-w-xl mx-auto p-4 space-y-4">
+      <div className="max-w-7xl mx-auto p-4 lg:p-6">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <LoadingSpinner />
-          </div>
-        ) : requests.length > 0 ? (
-          <div className="space-y-4">
-            {requests.map((req) => (
-              <div key={req.id} className="bg-white rounded-2xl border border-border shadow-sm p-5 relative overflow-hidden">
-                <div className="flex justify-between items-start mb-4">
-                  <StatusBadge status={req.status} />
-                  <div className="flex items-center gap-1 text-[10px] text-text-muted">
-                    <Clock className="w-3 h-3" />
-                    {formatDistanceToNow(new Date(req.created_at))} ago
-                  </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-2xl border border-border p-5 space-y-4">
+                <div className="flex justify-between items-start">
+                  <Skeleton className="w-20 h-6 rounded-full" />
+                  <Skeleton className="w-24 h-4" />
                 </div>
-
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <p className="text-xs text-text-muted mb-1">{t("shares")}</p>
-                    <ShareBoxes count={req.shares_wanted} />
-                  </div>
-
-                  <div className="flex justify-between text-sm">
-                    <div>
-                      <p className="text-[10px] text-text-muted uppercase font-bold">{t("area")}</p>
-                      <p className="font-semibold flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-primary" />
-                        {req.area_name?.split(",")[0]}
-                      </p>
-                    </div>
-                    {req.budget && (
-                      <div className="text-right">
-                        <p className="text-[10px] text-text-muted uppercase font-bold">{t("budget")}</p>
-                        <p className="font-bold text-primary">৳{req.budget.toLocaleString()}</p>
-                      </div>
-                    )}
-                  </div>
+                <div className="space-y-2">
+                  <Skeleton className="w-full h-8" />
+                  <Skeleton className="w-2/3 h-4" />
                 </div>
-
-                <div className="flex gap-3 pt-4 border-t border-border">
-                  {req.status === "open" && (
-                    <button
-                      onClick={() => setConfirming({ id: req.id, action: "fill" })}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 border-primary text-primary rounded-xl text-xs font-bold hover:bg-primary/5 transition-all"
-                    >
-                      <CheckCircle2 className="w-4 h-4" /> {t("mark_filled")}
-                    </button>
-                  )}
-                  <Link
-                    href={`/edit-request/${req.id}`}
-                    className="px-4 py-2 border-2 border-primary text-primary rounded-xl text-xs font-bold hover:bg-primary/5 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Pencil className="w-4 h-4" /> {t("edit")}
-                  </Link>
-                  <button
-                    onClick={() => setConfirming({ id: req.id, action: "delete" })}
-                    className="px-4 py-2 border-2 border-error text-error rounded-xl text-xs font-bold hover:bg-error/5 transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <div className="flex gap-2 pt-2">
+                  <Skeleton className="flex-1 h-10 rounded-xl" />
+                  <Skeleton className="w-10 h-10 rounded-xl" />
                 </div>
               </div>
             ))}
-            
+          </div>
+        ) : requests.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              {requests.map((req) => (
+                <div key={req.id} className="bg-white rounded-2xl border border-border shadow-sm p-5 relative overflow-hidden flex flex-col">
+                  <div className="flex justify-between items-start mb-4">
+                    <StatusBadge status={req.status} />
+                    <div className="flex items-center gap-1 text-xs text-text-muted">
+                      <Clock className="w-3 h-3" />
+                      {formatDistanceToNow(new Date(req.created_at))} ago
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 mb-6 flex-1">
+                    <div>
+                      <p className="text-xs text-text-muted mb-1">{t("shares")}</p>
+                      <ShareBoxes count={req.shares_wanted} />
+                    </div>
+
+                    <div className="flex justify-between text-sm">
+                      <div>
+                        <p className="text-[10px] text-text-muted uppercase font-bold">{t("area")}</p>
+                        <p className="font-semibold flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-primary" />
+                          {req.area_name?.split(",")[0]}
+                        </p>
+                      </div>
+                      {req.budget && (
+                        <div className="text-right">
+                          <p className="text-[10px] text-text-muted uppercase font-bold">{t("budget")}</p>
+                          <p className="font-bold text-primary">৳{req.budget.toLocaleString()}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t border-border">
+                    {req.status === "open" && (
+                      <button
+                        onClick={() => setConfirming({ id: req.id, action: "fill" })}
+                        className="flex-1 flex items-center justify-center gap-2 h-10 min-w-[80px] px-3 border-2 border-primary text-primary rounded-xl text-xs font-bold hover:bg-primary/5 active:scale-95 transition-all"
+                      >
+                        <CheckCircle2 className="w-4 h-4" /> {t("mark_filled")}
+                      </button>
+                    )}
+                    <Link
+                      href={`/edit-request/${req.id}`}
+                      className="flex items-center justify-center gap-2 h-10 min-w-[80px] px-3 border-2 border-primary text-primary rounded-xl text-xs font-bold hover:bg-primary/5 active:scale-95 transition-all"
+                    >
+                      <Pencil className="w-4 h-4" /> {t("edit")}
+                    </Link>
+                    <button
+                      onClick={() => setConfirming({ id: req.id, action: "delete" })}
+                      className="flex items-center justify-center h-10 w-10 border-2 border-error text-error rounded-xl hover:bg-error/5 active:scale-95 transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <div className="pt-6 pb-12">
               <Link
                 href="/post-request"
@@ -165,16 +222,26 @@ export default function MyRequestsPage() {
                 <span className="text-lg">{t("empty_cta")}</span>
               </Link>
             </div>
-          </div>
+          </>
         ) : (
-          <div className="py-20 text-center space-y-6">
-            <span className="text-6xl block">🐄</span>
-            <div>
+          <div className="py-20 flex flex-col items-center text-center space-y-6 max-w-sm mx-auto">
+            <div className="relative">
+              <div className="w-32 h-32 bg-primary-lighter rounded-full flex items-center justify-center shadow-inner">
+                <span className="text-6xl" role="img" aria-label="cow">🐄</span>
+              </div>
+              <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-accent-lighter border-2 border-accent/30 rounded-full flex items-center justify-center shadow-sm">
+                <Plus className="w-5 h-5 text-accent-dark" />
+              </div>
+            </div>
+            <div className="space-y-2">
               <p className="text-xl font-bold text-text-primary">{t("empty_title")}</p>
+              <p className="text-sm text-text-muted leading-relaxed">
+                কোরবানির জন্য একটি শেয়ার অনুরোধ পোস্ট করুন এবং কাছের মানুষদের সাথে সংযুক্ত হন।
+              </p>
             </div>
             <Link
               href="/post-request"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-light active:scale-95 transition-all"
             >
               <Plus className="w-5 h-5" /> {t("empty_cta")}
             </Link>
@@ -197,13 +264,13 @@ export default function MyRequestsPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirming(null)}
-                className="flex-1 py-3 border-2 border-border rounded-xl font-bold text-text-muted hover:bg-background transition-all"
+                className="flex-1 py-3 border-2 border-border rounded-xl font-bold text-text-muted hover:bg-background transition-all active:scale-95"
               >
                 {tc("cancel")}
               </button>
               <button
                 onClick={handleAction}
-                className={`flex-1 py-3 rounded-xl font-bold text-white transition-all ${
+                className={`flex-1 py-3 rounded-xl font-bold text-white transition-all active:scale-95 ${
                   confirming.action === "delete" ? "bg-error hover:bg-opacity-90" : "bg-primary hover:bg-opacity-90"
                 }`}
               >
@@ -220,13 +287,13 @@ export default function MyRequestsPage() {
 function StatusBadge({ status }: { status: string }) {
   const t = useTranslations("requests");
   const configs: Record<string, { key: string; cls: string }> = {
-    open:    { key: "status_open",    cls: "bg-primary/10 text-primary border-primary/20" },
-    filled:  { key: "status_filled",  cls: "bg-accent/10 text-accent border-accent/20" },
+    open:    { key: "status_open",    cls: "bg-primary/10 text-primary border-primary/30" },
+    filled:  { key: "status_filled",  cls: "bg-accent/15 text-accent-dark border-accent/30" },
     expired: { key: "status_expired", cls: "bg-gray-100 text-gray-500 border-gray-200" },
   };
   const config = configs[status] || configs.expired;
   return (
-    <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase ${config.cls}`}>
+    <div className={`px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wide ${config.cls}`}>
       {t(config.key as any)}
     </div>
   );
@@ -238,7 +305,7 @@ function ShareBoxes({ count }: { count: number }) {
       {Array.from({ length: 7 }).map((_, i) => (
         <div
           key={i}
-          className={`w-4 h-4 rounded-sm ${i < count ? "bg-primary shadow-sm" : "bg-border/30"}`}
+          className={`w-5 h-5 rounded-sm ${i < count ? "bg-primary shadow-sm" : "bg-border/30"}`}
         />
       ))}
     </div>

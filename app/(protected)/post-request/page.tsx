@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Lock, CheckCircle2, MessageSquare,
-  Phone, MapPin, Info
+  Phone, MapPin, Info, Sparkles
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
@@ -103,7 +103,7 @@ export default function PostRequestPage() {
       setIsSuccess(true);
       setTimeout(() => {
         router.push("/dashboard");
-      }, 1500);
+      }, 2500);
     } catch (err: any) {
       toast.error(err.message || "পোস্ট করতে সমস্যা হয়েছে");
       setSubmitting(false);
@@ -120,18 +120,28 @@ export default function PostRequestPage() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 animate-in fade-in duration-500">
-        <div className="bg-white rounded-full p-6 shadow-xl mb-6 scale-110">
-          <CheckCircle2 className="w-20 h-20 text-primary" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-primary p-6 animate-in fade-in duration-500">
+        <div className="relative mb-8">
+          <div className="bg-white/20 rounded-full p-8 animate-in zoom-in duration-700">
+            <CheckCircle2 className="w-24 h-24 text-white" />
+          </div>
+          <div className="absolute -top-2 -right-2 animate-in zoom-in duration-1000 delay-300">
+            <Sparkles className="w-8 h-8 text-accent" />
+          </div>
         </div>
-        <h1 className="text-3xl font-bold text-text-primary mb-2">{t("success")}</h1>
-        <p className="text-xl font-medium text-text-muted">{t("success_sub")}</p>
+        <h1 className="text-4xl font-bold text-white mb-3 text-center">{t("success")}</h1>
+        <p className="text-xl font-medium text-white/80 text-center mb-8">{t("success_sub")}</p>
+        <div className="flex items-center gap-2 text-white/60 text-sm">
+          <div className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse" />
+          <span>Redirecting to dashboard…</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background font-hind pb-10">
+    <div className="min-h-screen bg-background font-hind">
+      {/* Sticky header */}
       <div className="bg-white px-4 py-4 flex items-center gap-4 border-b border-border sticky top-0 z-10">
         <button onClick={() => router.back()} className="p-2 hover:bg-background rounded-full transition-colors">
           <ArrowLeft className="w-6 h-6 text-text-primary" />
@@ -141,224 +151,287 @@ export default function PostRequestPage() {
         </h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-xl mx-auto p-4 space-y-8 mt-4">
-        {/* Field 1: Shares Wanted */}
-        <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
-          <label className="block text-sm font-bold text-text-primary mb-1 uppercase tracking-wider">
-            {t("shares_label")}
-          </label>
-          <div className="flex gap-2 my-6 justify-between">
-            {Array.from({ length: 7 }).map((_, i) => {
-              const shareNum = i + 1;
-              const isLast = shareNum === 7;
-              const isSelected = shareNum <= sharesWanted;
+      {/* Desktop two-column / Mobile single column */}
+      <div className="lg:grid lg:grid-cols-[1fr_380px] lg:gap-8 lg:max-w-6xl lg:mx-auto lg:px-8 lg:pt-8 lg:pb-12">
 
-              return (
-                <div key={shareNum} className="flex flex-col items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={isLast}
-                    onClick={() => setSharesWanted(shareNum)}
-                    className={`w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center ${
-                      isLast
-                        ? "border-accent bg-accent/10 text-accent cursor-not-allowed"
-                        : isSelected
-                          ? "border-primary bg-primary text-white shadow-md shadow-primary/20"
-                          : "border-border bg-white text-text-muted hover:border-primary/50"
-                    }`}
-                  >
-                    {isLast ? <Lock className="w-5 h-5" /> : shareNum}
-                  </button>
-                  {isLast && <span className="text-[10px] font-bold text-accent">{t("others_label")}</span>}
-                </div>
-              );
-            })}
-          </div>
-          <p className="text-center font-bold text-primary mb-2">
-            {t("shares_summary", { count: sharesWanted })}
-          </p>
-          <div className="flex items-center gap-2 text-xs text-text-muted bg-background p-3 rounded-lg border border-dashed border-border">
-            <Info className="w-4 h-4 text-primary" />
-            {t("shares_max_note")}
-          </div>
-        </div>
-
-        {/* Field 2 & 3: Budget and Price Range */}
-        <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
-          <div>
-            <label className="block text-sm font-bold text-text-primary mb-3 uppercase tracking-wider">
-              {t("budget_label")}
+        {/* Left: form */}
+        <form
+          id="post-form"
+          onSubmit={handleSubmit}
+          className="max-w-xl mx-auto lg:max-w-none p-4 lg:p-0 space-y-6 mt-4 lg:mt-0 pb-28 lg:pb-0"
+        >
+          {/* Shares Wanted */}
+          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
+            <label className="block text-sm font-bold text-text-primary mb-1 uppercase tracking-wider">
+              {t("shares_label")}
             </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-text-muted text-xl">৳</span>
+            <div className="flex gap-2 my-6 justify-between">
+              {Array.from({ length: 7 }).map((_, i) => {
+                const shareNum = i + 1;
+                const isLast = shareNum === 7;
+                const isSelected = shareNum <= sharesWanted;
+
+                return (
+                  <div key={shareNum} className="flex flex-col items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={isLast}
+                      onClick={() => setSharesWanted(shareNum)}
+                      className={`w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center active:scale-95 ${
+                        isLast
+                          ? "border-accent bg-accent/10 text-accent cursor-not-allowed"
+                          : isSelected
+                            ? "border-primary bg-primary text-white shadow-md shadow-primary/20"
+                            : "border-border bg-white text-text-muted hover:border-primary/50"
+                      }`}
+                    >
+                      {isLast ? <Lock className="w-5 h-5" /> : shareNum}
+                    </button>
+                    {isLast && <span className="text-[10px] font-bold text-accent">{t("others_label")}</span>}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-center font-bold text-primary mb-2">
+              {t("shares_summary", { count: sharesWanted })}
+            </p>
+            <div className="flex items-center gap-2 text-xs text-text-muted bg-background p-3 rounded-lg border border-dashed border-border">
+              <Info className="w-4 h-4 text-primary flex-shrink-0" />
+              {t("shares_max_note")}
+            </div>
+          </div>
+
+          {/* Budget & Price Range */}
+          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-text-primary mb-3 uppercase tracking-wider">
+                {t("budget_label")}
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-text-muted text-xl">৳</span>
+                <input
+                  type="number"
+                  placeholder="40000"
+                  className="w-full pl-10 pr-4 py-3 text-base rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-text-primary mb-3 uppercase tracking-wider">
+                {t("price_range_label")}
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">Min ৳</span>
+                  <input
+                    type="number"
+                    placeholder="60000"
+                    className="w-full pl-14 pr-4 py-3 text-base rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                  />
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">Max ৳</span>
+                  <input
+                    type="number"
+                    placeholder="80000"
+                    className="w-full pl-14 pr-4 py-3 text-base rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Contacts */}
+          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-text-primary mb-3 uppercase tracking-wider flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-primary" />
+                {t("whatsapp_label")}
+              </label>
               <input
-                type="number"
-                placeholder="40000"
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
+                type="tel"
+                placeholder="01XXXXXXXXX"
+                className="w-full px-4 py-3 text-base rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-text-primary mb-3 uppercase tracking-wider flex items-center gap-2">
+                <Phone className="w-4 h-4 text-primary" />
+                {t("phone_label")}
+              </label>
+              <input
+                type="tel"
+                placeholder="01XXXXXXXXX"
+                className="w-full px-4 py-3 text-base rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-text-primary mb-3 uppercase tracking-wider">
-              {t("price_range_label")}
-            </label>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">Min ৳</span>
-                <input
-                  type="number"
-                  placeholder="60000"
-                  className="w-full pl-14 pr-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
-                  value={minPrice}
-                  onChange={(e) => setMinPrice(e.target.value)}
-                />
+          {/* Location (mobile only thumbnail + always-visible text/link) */}
+          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
+            <div className="flex justify-between items-center mb-4">
+              <label className="text-sm font-bold text-text-primary uppercase tracking-wider">
+                {t("location_label")}
+              </label>
+              <Link href="/setup-location?redirect=/post-request" className="text-xs font-bold text-primary hover:underline">
+                {t("change_location")}
+              </Link>
+            </div>
+            <div className="flex gap-4 items-center">
+              {/* Thumbnail: visible on mobile, hidden on desktop (full map shown in right col) */}
+              <div className="w-24 h-24 rounded-xl border border-border flex-shrink-0 overflow-hidden lg:hidden">
+                {profile?.latitude && profile?.longitude ? (
+                  <LeafletMap
+                    center={{ lat: profile.latitude, lng: profile.longitude }}
+                    markers={[{ lat: profile.latitude, lng: profile.longitude }]}
+                    zoom={13}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-background flex items-center justify-center">
+                    <MapPin className="w-6 h-6 text-border" />
+                  </div>
+                )}
               </div>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">Max ৳</span>
-                <input
-                  type="number"
-                  placeholder="80000"
-                  className="w-full pl-14 pr-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all text-sm"
-                  value={maxPrice}
-                  onChange={(e) => setMaxPrice(e.target.value)}
-                />
+              <div className="flex-1">
+                <p className="text-sm font-bold text-text-primary flex items-center gap-1">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  {profile?.area_name?.split(",")[0] || "Location set"}
+                </p>
+                <p className="text-xs text-text-muted mt-1 line-clamp-2">
+                  {profile?.area_name}
+                </p>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Field 4 & 5: Contacts */}
-        <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
-          <div>
-            <label className="block text-sm font-bold text-text-primary mb-3 uppercase tracking-wider flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-primary" />
-              {t("whatsapp_label")}
-            </label>
-            <input
-              type="tel"
-              placeholder="01XXXXXXXXX"
-              className="w-full px-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-text-primary mb-3 uppercase tracking-wider flex items-center gap-2">
-              <Phone className="w-4 h-4 text-primary" />
-              {t("phone_label")}
-            </label>
-            <input
-              type="tel"
-              placeholder="01XXXXXXXXX"
-              className="w-full px-4 py-3 rounded-xl border border-border focus:ring-2 focus:ring-primary outline-none transition-all"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Field 6: Location */}
-        <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <label className="text-sm font-bold text-text-primary uppercase tracking-wider">
-              {t("location_label")}
-            </label>
-            <Link href="/setup-location?redirect=/post-request" className="text-xs font-bold text-primary hover:underline">
-              {t("change_location")}
-            </Link>
-          </div>
-          <div className="flex gap-4 items-center">
-            <div className="w-24 h-24 rounded-xl border border-border flex-shrink-0 overflow-hidden">
-              {profile?.latitude && profile?.longitude ? (
-                <LeafletMap
-                  center={{ lat: profile.latitude, lng: profile.longitude }}
-                  markers={[{ lat: profile.latitude, lng: profile.longitude }]}
-                  zoom={13}
-                />
-              ) : (
-                <div className="w-full h-full bg-background flex items-center justify-center">
-                  <MapPin className="w-6 h-6 text-border" />
-                </div>
-              )}
+          {/* Anonymity Toggles */}
+          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-text-primary">
+                  {t("hide_name_label")}
+                </p>
+                <p className="text-xs text-text-muted mt-0.5">
+                  {t("hide_name_sub")}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHideName(!hideName)}
+                aria-pressed={hideName}
+                className={`w-14 h-8 rounded-full transition-all relative flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${hideName ? "bg-primary" : "bg-border"}`}
+              >
+                <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all shadow-sm ${hideName ? "left-7" : "left-1"}`} />
+              </button>
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-text-primary flex items-center gap-1">
-                <MapPin className="w-4 h-4 text-primary" />
-                {profile?.area_name?.split(",")[0] || "Location set"}
-              </p>
-              <p className="text-xs text-text-muted mt-1 line-clamp-2">
-                {profile?.area_name}
-              </p>
+
+            <div className="h-px bg-border" />
+
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-text-primary">
+                  {t("hide_phone_label")}
+                </p>
+                <p className="text-xs text-text-muted mt-0.5">
+                  {t("hide_phone_sub")}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHidePhone(!hidePhone)}
+                aria-pressed={hidePhone}
+                className={`w-14 h-8 rounded-full transition-all relative flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${hidePhone ? "bg-primary" : "bg-border"}`}
+              >
+                <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all shadow-sm ${hidePhone ? "left-7" : "left-1"}`} />
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Field 7: Anonymity Toggle */}
-        <div className="bg-white p-6 rounded-2xl border border-border shadow-sm space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-bold text-text-primary">
-                {t("hide_name_label")}
-              </p>
-              <p className="text-xs text-text-muted">
-                {t("hide_name_sub")}
-              </p>
-            </div>
+          {/* Submit — desktop only (mobile submit is in the sticky footer below) */}
+          <div className="hidden lg:block space-y-3">
             <button
-              type="button"
-              onClick={() => setHideName(!hideName)}
-              className={`w-14 h-8 rounded-full transition-all relative ${hideName ? "bg-primary" : "bg-border"}`}
+              type="submit"
+              disabled={submitting}
+              className="w-full bg-primary text-white py-4 rounded-2xl font-bold text-xl shadow-xl shadow-primary/20 hover:bg-primary-light active:scale-[0.99] transition-all flex items-center justify-center gap-3"
             >
-              <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all shadow-sm ${hideName ? "left-7" : "left-1"}`} />
+              {submitting ? (
+                <LoadingSpinner size={28} className="!gap-0 !flex-row !text-white" />
+              ) : t("submit")}
             </button>
-          </div>
-
-          <div className="h-px bg-border" />
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-bold text-text-primary">
-                {t("hide_phone_label")}
-              </p>
-              <p className="text-xs text-text-muted">
-                {t("hide_phone_sub")}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setHidePhone(!hidePhone)}
-              className={`w-14 h-8 rounded-full transition-all relative ${hidePhone ? "bg-primary" : "bg-border"}`}
-            >
-              <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all shadow-sm ${hidePhone ? "left-7" : "left-1"}`} />
-            </button>
-          </div>
-        </div>
-
-        {/* Submit */}
-        <div className="space-y-4">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-primary text-white py-4 rounded-2xl font-bold text-xl shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3"
-          >
-            {submitting ? (
-              <div className="scale-50">
-                <LoadingSpinner size={32} className="!gap-0 !flex-row !text-white" />
-              </div>
-            ) : t("submit")}
-          </button>
-
-          <div className="text-center">
-            <p className="text-[10px] text-text-muted">
+            <p className="text-center text-[11px] text-text-muted">
               {t("expiry_note", { date: tc("eid_date") })}
             </p>
           </div>
+        </form>
+
+        {/* Right: map preview (desktop only) */}
+        <div className="hidden lg:block">
+          <div className="sticky top-24 space-y-4">
+            <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+              <div className="flex justify-between items-center px-5 pt-5 pb-3">
+                <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  {t("location_label")}
+                </h3>
+                <Link href="/setup-location?redirect=/post-request" className="text-xs font-bold text-primary hover:underline">
+                  {t("change_location")}
+                </Link>
+              </div>
+              <div className="h-64 w-full">
+                {profile?.latitude && profile?.longitude ? (
+                  <LeafletMap
+                    center={{ lat: profile.latitude, lng: profile.longitude }}
+                    markers={[{ lat: profile.latitude, lng: profile.longitude }]}
+                    zoom={14}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-background flex flex-col items-center justify-center gap-2 text-text-muted">
+                    <MapPin className="w-8 h-8 text-border" />
+                    <p className="text-sm">No location set</p>
+                  </div>
+                )}
+              </div>
+              {profile?.area_name && (
+                <div className="px-5 py-3 border-t border-border">
+                  <p className="text-sm text-text-secondary line-clamp-2">{profile.area_name}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-primary-lighter rounded-2xl p-4 border border-primary/20">
+              <p className="text-xs text-primary font-medium leading-relaxed">
+                {t("expiry_note", { date: tc("eid_date") })}
+              </p>
+            </div>
+          </div>
         </div>
-      </form>
+      </div>
+
+      {/* Mobile sticky submit footer */}
+      <div className="fixed bottom-0 left-0 right-0 lg:hidden bg-white/95 backdrop-blur-sm border-t border-border px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] z-20">
+        <button
+          type="submit"
+          form="post-form"
+          disabled={submitting}
+          className="w-full bg-primary text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-primary/20 hover:bg-primary-light active:scale-[0.99] transition-all flex items-center justify-center gap-3"
+        >
+          {submitting ? (
+            <LoadingSpinner size={24} className="!gap-0 !flex-row !text-white" />
+          ) : t("submit")}
+        </button>
+      </div>
     </div>
   );
 }

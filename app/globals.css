@@ -6,8 +6,53 @@
   color-scheme: light;
 }
 
+html {
+  font-size: 15px;
+  scroll-behavior: smooth;
+}
+
 body {
-  @apply bg-background text-text-primary antialiased;
+  @apply bg-background text-text-primary antialiased leading-relaxed;
+}
+
+/* Touch UX — remove 300ms tap delay and tap highlight */
+button,
+a,
+[role="button"],
+label {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Brand focus ring */
+*:focus-visible {
+  outline: 2px solid #1B6B3A;
+  outline-offset: 2px;
+}
+
+/* Custom scrollbar — thin, brand-colored */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #1B6B3A;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2D8A4E;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 @keyframes pulse-ripple {
