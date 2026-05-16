@@ -68,7 +68,7 @@
   "requests": {
     "title": "My Requests",
     "empty_title": "No requests yet",
-    "empty_cta": "Post your first request",
+    "empty_cta": "Post your request",
     "area": "Area",
     "budget": "Budget",
     "shares": "Shares Wanted",
@@ -82,7 +82,8 @@
     "fill_msg": "This will mark the post as completed and hide it from the map.",
     "delete_msg": "This post will be permanently deleted.",
     "fill_success": "Post marked as filled",
-    "delete_success": "Post deleted"
+    "delete_success": "Post deleted",
+    "edit": "Edit"
   },
   "profile": {
     "title": "Profile",
@@ -132,7 +133,14 @@
     "anon_off": "Show my name",
     "anon_off_sub": "Your name will be visible to others",
     "submit": "Post Request",
+    "edit_title": "Edit Share Request",
+    "hide_name_label": "Hide my name",
+    "hide_name_sub": "Your name will not be visible to others",
+    "hide_phone_label": "Hide my phone",
+    "hide_phone_sub": "Your phone number will not be visible to others",
     "expiry_note": "This request will automatically expire on Eid ul-Adha ({date})",
+    "update": "Update Request",
+    "update_success": "Post updated successfully!",
     "success": "Posted!",
     "success_sub": "Post successful!",
     "contact_required": "Provide at least one contact (WhatsApp or phone)",
