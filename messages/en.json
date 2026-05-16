@@ -202,5 +202,47 @@
     "error_send": "Failed to send message",
     "you": "You",
     "browse_map": "Browse Map"
+  },
+  "tour": {
+    "next": "Next",
+    "skip": "Skip",
+    "done": "Got it",
+    "get_started": "Get Started →",
+    "step_of": "{current} of {total}",
+
+    "intro_title": "🐄 Share Qurbani — How it works",
+    "intro_point1": "Someone posts how many of the 7 shares they want for their cow.",
+    "intro_point2": "You request to join with the remaining shares.",
+    "intro_point3": "The owner reviews your request, chats if needed, then approves.",
+    "intro_point4": "On approval, both phone numbers are shared so you can coordinate.",
+    "intro_point5": "When all 7 shares are filled, the post completes automatically.",
+    "intro_note": "Note: Withdrawing after approval (past 24 hours) adds a penalty. 5 penalties = account suspended.",
+
+    "step1_title": "Your Neighbourhood Map",
+    "step1_desc": "This map shows all share requests near you. Tap any marker to open listing details.",
+
+    "step2_title": "Nearby Requests",
+    "step2_desc": "Each card is a person near you looking for Qurbani partners. The coloured bar shows how many of 7 shares are already filled.",
+
+    "step3_title": "Post Your Own Request",
+    "step3_desc": "Tap + to post your own share request. You pre-claim your shares — others can request to join the rest.",
+
+    "step4_title": "Request to Join",
+    "step4_desc": "Tap any listing card, then tap 'Request to Join'. Choose how many shares you want and send. The owner approves and phone numbers are exchanged.",
+
+    "step5_title": "Your Messages",
+    "step5_desc": "All conversations with potential partners live here, including with owners who keep their phone number hidden.",
+
+    "nav_map_title": "Map",
+    "nav_map_desc": "You're here — browse the live map of share requests near you.",
+
+    "nav_posts_title": "My Posts",
+    "nav_posts_desc": "Manage the share requests you've posted. Edit, close, or check who has joined.",
+
+    "nav_profile_title": "Your Profile",
+    "nav_profile_desc": "Update your name, location, and language. You can also replay this guide anytime from here.",
+
+    "step6_title": "Manage Join Requests",
+    "step6_desc": "When someone wants to join your post, their request appears here. Review, approve, or reject each one."
   }
 }

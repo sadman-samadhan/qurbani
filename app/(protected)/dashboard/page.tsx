@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 import Image from "next/image";
 import Logo from "@/components/ui/Logo";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import OnboardingTour, { TourStep } from "@/components/ui/OnboardingTour";
 import { useTranslations, useLocale } from "next-intl";
 import { setLocale } from "@/app/actions/locale";
 
@@ -28,6 +29,19 @@ const DashboardMap = dynamic(() => import("@/components/map/DashboardMap"), {
     </div>
   ),
 });
+
+const tourSteps: TourStep[] = [
+  { isIntro: true, titleKey: "intro_title" },
+  { targetSelector: '[data-tour="map"]', titleKey: "step1_title", descKey: "step1_desc" },
+  { targetSelector: '[data-tour="nearby-listings"]', titleKey: "step2_title", descKey: "step2_desc" },
+  { targetSelector: '[data-tour="fab-post"], [data-tour="fab-post-desktop"]', titleKey: "step3_title", descKey: "step3_desc" },
+  { targetSelector: '[data-tour="first-listing-card"]', titleKey: "step4_title", descKey: "step4_desc" },
+  { targetSelector: '[data-tour="messages-tab"]', titleKey: "step5_title", descKey: "step5_desc" },
+  { targetSelector: '[data-tour="map-tab"]', titleKey: "nav_map_title", descKey: "nav_map_desc" },
+  { targetSelector: '[data-tour="my-posts-tab"]', titleKey: "nav_posts_title", descKey: "nav_posts_desc" },
+  { targetSelector: '[data-tour="profile-tab"]', titleKey: "nav_profile_title", descKey: "nav_profile_desc" },
+  { targetSelector: '[data-tour="join-section"]', titleKey: "step6_title", descKey: "step6_desc" },
+];
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -58,6 +72,7 @@ export default function DashboardPage() {
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
+  const [showTour, setShowTour] = useState(false);
 
   const otherRequests = useMemo(() => {
     if (!profile) return [];
@@ -90,6 +105,11 @@ export default function DashboardPage() {
     const next = locale === "en" ? "bn" : "en";
     await setLocale(next);
     router.refresh();
+  };
+
+  const handleTourDone = () => {
+    localStorage.setItem("qs_tour_done", "1");
+    setShowTour(false);
   };
 
   const fetchMyJoinStatus = async (requestId: string) => {
@@ -346,6 +366,12 @@ export default function DashboardPage() {
 
       setProfile(profile);
       setMapCenter([profile.latitude, profile.longitude]);
+
+      if (localStorage.getItem("qs_tour_pending") === "1") {
+        localStorage.removeItem("qs_tour_pending");
+        setShowTour(true);
+      }
+
       fetchNearby(profile.latitude, profile.longitude, user.id);
       fetchPendingJoinRequests(user.id);
       fetchNotifications(user.id);
@@ -534,6 +560,7 @@ export default function DashboardPage() {
               )}
             </div>
             <button
+              data-tour="fab-post-desktop"
               onClick={() => router.push("/post-request")}
               className="ml-2 flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-primary-light active:scale-95 transition-all shadow-sm shadow-primary/20"
             >
@@ -600,7 +627,7 @@ export default function DashboardPage() {
 
       {/* Pending Join Requests — owner management */}
       {(pendingLoading || pendingJoinRequests.length > 0) && (
-        <div className="px-4 lg:px-6 pt-4 lg:pt-6">
+        <div data-tour="join-section" className="px-4 lg:px-6 pt-4 lg:pt-6">
           <div className="flex items-center gap-2.5 mb-4">
             <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
               <UserPlus className="w-4 h-4 text-amber-600" />
@@ -704,7 +731,7 @@ export default function DashboardPage() {
       )}
 
       {/* Map Section — fixed height, no shrink */}
-      <div className="relative h-[45vh] sm:h-[50vh] min-h-[260px] lg:h-[60vh] flex-shrink-0">
+      <div data-tour="map" className="relative h-[45vh] sm:h-[50vh] min-h-[260px] lg:h-[60vh] flex-shrink-0">
         {profile && mapCenter && (
           <DashboardMap
             center={mapCenter}
@@ -726,7 +753,7 @@ export default function DashboardPage() {
       <div className="flex-1 overflow-y-auto lg:overflow-visible">
 
       {/* Nearby Listings */}
-      <div className="p-4 lg:px-6 lg:py-6">
+      <div data-tour="nearby-listings" className="p-4 lg:px-6 lg:py-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -753,8 +780,8 @@ export default function DashboardPage() {
           {loading ? (
             [1, 2, 3].map(i => <SkeletonCard key={i} />)
           ) : nearbyRequests.length > 0 ? (
-            nearbyRequests.map(req => (
-              <RequestCard key={req.id} request={req} onClick={() => handleCardClick(req)} />
+            nearbyRequests.map((req, i) => (
+              <RequestCard key={req.id} request={req} onClick={() => handleCardClick(req)} {...(i === 0 ? { "data-tour": "first-listing-card" } : {})} />
             ))
           ) : (
             <div className="w-full py-8 text-center bg-white rounded-2xl border border-dashed border-border">
@@ -769,8 +796,8 @@ export default function DashboardPage() {
           {loading ? (
             [1, 2, 3, 4].map(i => <SkeletonCard key={i} className="" />)
           ) : nearbyRequests.length > 0 ? (
-            nearbyRequests.map(req => (
-              <RequestCard key={req.id} request={req} className="" onClick={() => handleCardClick(req)} />
+            nearbyRequests.map((req, i) => (
+              <RequestCard key={req.id} request={req} className="" onClick={() => handleCardClick(req)} {...(i === 0 ? { "data-tour": "first-listing-card" } : {})} />
             ))
           ) : (
             <div className="col-span-4 py-8 text-center bg-white rounded-2xl border border-dashed border-border">
@@ -850,6 +877,7 @@ export default function DashboardPage() {
       {/* FAB — mobile only */}
       <div className="absolute bottom-24 right-4 z-20 lg:hidden">
         <button
+          data-tour="fab-post"
           onClick={() => router.push("/post-request")}
           className="group relative bg-primary text-white w-16 h-16 rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
         >
@@ -862,9 +890,13 @@ export default function DashboardPage() {
 
       {/* Bottom Nav — mobile only */}
       <div className="bg-white border-t border-border flex-shrink-0 flex items-center justify-around pt-4 px-2 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] z-10 lg:hidden">
-        <NavButton icon={<MapIcon className="w-6 h-6" />} label={td("map")} active />
-        <NavButton icon={<ClipboardList className="w-6 h-6" />} label={td("my_posts")} onClick={() => router.push("/my-requests")} />
-        <div className="relative group">
+        <div data-tour="map-tab">
+          <NavButton icon={<MapIcon className="w-6 h-6" />} label={td("map")} active />
+        </div>
+        <div data-tour="my-posts-tab">
+          <NavButton icon={<ClipboardList className="w-6 h-6" />} label={td("my_posts")} onClick={() => router.push("/my-requests")} />
+        </div>
+        <div data-tour="messages-tab" className="relative group">
           <NavButton icon={<MessageCircle className="w-6 h-6" />} label={td("messages")} onClick={() => router.push("/messages")} />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-error text-[8px] text-white px-1.5 py-0.5 rounded-full font-bold min-w-[16px] text-center">
@@ -872,7 +904,9 @@ export default function DashboardPage() {
             </span>
           )}
         </div>
-        <NavButton icon={<User className="w-6 h-6" />} label={td("profile")} onClick={() => router.push("/profile")} />
+        <div data-tour="profile-tab">
+          <NavButton icon={<User className="w-6 h-6" />} label={td("profile")} onClick={() => router.push("/profile")} />
+        </div>
       </div>
 
       {/* Approve Confirm Dialog */}
@@ -1161,6 +1195,8 @@ export default function DashboardPage() {
                       </div>
                     ) : (
                       <>
+                        <ShareSystemExplainer locale={locale} />
+
                         {isFull && myJoinRequest?.status !== "approved" && (
                           <div className="w-full py-3 rounded-2xl bg-gray-50 border border-border flex items-center justify-center text-text-muted text-sm">
                             {locale === "en" ? "All shares for this cow are filled" : "এই গরুর সব শেয়ার পূর্ণ হয়ে গেছে"}
@@ -1328,6 +1364,46 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {showTour && !loading && (
+        <OnboardingTour
+          steps={tourSteps}
+          locale={locale}
+          onDone={handleTourDone}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── ShareSystemExplainer sub-component ────────────────────────────────────────
+function ShareSystemExplainer({ locale }: { locale: string }) {
+  const [open, setOpen] = useState(false);
+  const t = useTranslations("tour");
+
+  return (
+    <div className="rounded-2xl border border-border overflow-hidden">
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-text-muted hover:bg-background transition-colors"
+      >
+        <span>{locale === "en" ? "How does sharing work?" : "শেয়ার কীভাবে কাজ করে?"}</span>
+        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="px-4 pb-4 bg-background border-t border-border">
+          <ol className="flex flex-col gap-2 pt-3">
+            {(["intro_point1", "intro_point2", "intro_point3", "intro_point4", "intro_point5"] as const).map((key, i) => (
+              <li key={key} className="flex gap-2 text-xs text-text-muted">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center">
+                  {i + 1}
+                </span>
+                <span>{t(key)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }
@@ -1417,7 +1493,7 @@ function NavButton({ icon, label, active = false, disabled = false, onClick }: a
   );
 }
 
-function RequestCard({ request, onClick, className = "flex-shrink-0 w-64 sm:w-72" }: any) {
+function RequestCard({ request, onClick, className = "flex-shrink-0 w-64 sm:w-72", ...rest }: any) {
   const router = useRouter();
   const tm = useTranslations("map_page");
   const locale = useLocale();
@@ -1429,6 +1505,7 @@ function RequestCard({ request, onClick, className = "flex-shrink-0 w-64 sm:w-72
     <div
       onClick={onClick}
       className={`${className} relative bg-white rounded-2xl overflow-hidden border border-border/60 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group`}
+      {...rest}
     >
       {/* Top accent */}
       <div className={`h-0.5 w-full ${isFull ? "bg-accent" : "bg-primary"}`} />

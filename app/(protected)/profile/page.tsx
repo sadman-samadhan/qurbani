@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, User, Phone, MapPin, Globe, Lock,
-  LogOut, Check, Edit2, ChevronRight, X, Map as MapIcon, ClipboardList, MessageCircle, Plus
+  LogOut, Check, Edit2, ChevronRight, X, Map as MapIcon, ClipboardList, MessageCircle, Plus, Info
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
@@ -275,6 +275,31 @@ export default function ProfilePage() {
             <div className={`w-14 h-8 rounded-full transition-all relative ${locale === "en" ? "bg-primary" : "bg-accent"}`}>
               <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all shadow-sm ${locale === "en" ? "left-1" : "left-7"}`} />
             </div>
+          </button>
+        </div>
+
+        {/* Section 3b: How it works */}
+        <div className="bg-white rounded-2xl border border-border shadow-sm p-4">
+          <button
+            onClick={() => {
+              localStorage.removeItem("qs_tour_done");
+              localStorage.setItem("qs_tour_pending", "1");
+              router.push("/dashboard");
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-border hover:bg-background transition-all"
+          >
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+              <Info className="w-5 h-5 text-primary" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-bold text-text-primary">
+                {locale === "en" ? "How it works" : "কীভাবে ব্যবহার করবেন"}
+              </p>
+              <p className="text-xs text-text-muted">
+                {locale === "en" ? "Replay the onboarding guide" : "গাইডটি আবার দেখুন"}
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-text-muted ml-auto" />
           </button>
         </div>
 
