@@ -703,8 +703,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Map Section */}
-      <div className="relative h-[50vh] sm:h-[55vh] min-h-[300px] lg:h-[60vh] flex-shrink-0">
+      {/* Map Section — fixed height, no shrink */}
+      <div className="relative h-[45vh] sm:h-[50vh] min-h-[260px] lg:h-[60vh] flex-shrink-0">
         {profile && mapCenter && (
           <DashboardMap
             center={mapCenter}
@@ -722,8 +722,11 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* Scrollable content below map */}
+      <div className="flex-1 overflow-y-auto lg:overflow-visible">
+
       {/* Nearby Listings */}
-      <div className="p-4 lg:px-6 lg:py-6 overflow-hidden lg:overflow-visible">
+      <div className="p-4 lg:px-6 lg:py-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -799,7 +802,7 @@ export default function DashboardPage() {
             const isExpanded = expandedAreas.has(area);
             const visible = isExpanded ? requests : requests.slice(0, 5);
             return (
-              <div key={area} className="bg-white rounded-2xl border border-border/60 overflow-hidden">
+              <div key={area} className="bg-white rounded-2xl border border-border/60 overflow-x-hidden">
                 {/* Area header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
                   <div className="flex items-center gap-2">
@@ -813,7 +816,7 @@ export default function DashboardPage() {
 
                 {/* Cards — mobile horizontal scroll, desktop grid */}
                 <div className="p-3">
-                  <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar lg:hidden">
+                  <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar lg:hidden" style={{ WebkitOverflowScrolling: "touch" }}>
                     {visible.map(req => (
                       <RequestCard key={req.id} request={req} onClick={() => handleCardClick(req)} />
                     ))}
@@ -842,6 +845,8 @@ export default function DashboardPage() {
         </div>
       )}
 
+      </div>{/* end scrollable content */}
+
       {/* FAB — mobile only */}
       <div className="absolute bottom-24 right-4 z-20 lg:hidden">
         <button
@@ -856,7 +861,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Bottom Nav — mobile only */}
-      <div className="bg-white border-t border-border mt-auto flex items-center justify-around pt-4 px-2 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] z-10 lg:hidden">
+      <div className="bg-white border-t border-border flex-shrink-0 flex items-center justify-around pt-4 px-2 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] z-10 lg:hidden">
         <NavButton icon={<MapIcon className="w-6 h-6" />} label={td("map")} active />
         <NavButton icon={<ClipboardList className="w-6 h-6" />} label={td("my_posts")} onClick={() => router.push("/my-requests")} />
         <div className="relative group">
