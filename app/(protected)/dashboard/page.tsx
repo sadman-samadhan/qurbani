@@ -7,7 +7,7 @@ import {
   Bell, Map as MapIcon, ClipboardList, MessageCircle, User,
   Plus, Search, Phone, MessageSquare, AlertCircle, MapPin,
   Clock, Users as UsersIcon, X, Globe, UserPlus, CheckCircle2,
-  ChevronRight
+  ChevronRight, AlertTriangle, ChevronDown, Navigation
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
@@ -42,7 +42,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [myJoinRequest, setMyJoinRequest] = useState<{ status: string; approved_at?: string; shares_wanted?: number } | null>(null);
+  const [myJoinRequest, setMyJoinRequest] = useState<{ id: string; status: string; approved_at?: string; shares_wanted?: number } | null>(null);
+  const [withdrawConfirm, setWithdrawConfirm] = useState<{ id: string; status: string; approvedAt?: string; sharesWanted?: number } | null>(null);
+  const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
   const [joinStatusLoading, setJoinStatusLoading] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinSharesWanted, setJoinSharesWanted] = useState(1);
@@ -55,6 +57,34 @@ export default function DashboardPage() {
   const [notifCount, setNotifCount] = useState(0);
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
+
+  const otherRequests = useMemo(() => {
+    if (!profile) return [];
+    const nearbyIds = new Set(nearbyRequests.map((r: any) => r.id));
+    return allRequests.filter(
+      (r: any) => r.user_id !== profile.id && !nearbyIds.has(r.id)
+    );
+  }, [allRequests, nearbyRequests, profile]);
+
+  const groupedOtherRequests = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    for (const r of otherRequests) {
+      const area = r.area_name?.split(",")[0]?.trim() || (locale === "en" ? "Unknown" : "অজানা");
+      if (!groups[area]) groups[area] = [];
+      groups[area].push(r);
+    }
+    return Object.entries(groups).sort(([, a], [, b]) => b.length - a.length);
+  }, [otherRequests, locale]);
+
+  const toggleArea = (area: string) => {
+    setExpandedAreas(prev => {
+      const next = new Set(prev);
+      if (next.has(area)) next.delete(area);
+      else next.add(area);
+      return next;
+    });
+  };
 
   const handleLangToggle = async () => {
     const next = locale === "en" ? "bn" : "en";
@@ -67,7 +97,7 @@ export default function DashboardPage() {
     setJoinStatusLoading(true);
     const { data } = await supabase
       .from("join_requests")
-      .select("status, approved_at, shares_wanted")
+      .select("id, status, approved_at, shares_wanted")
       .eq("request_id", requestId)
       .eq("requester_id", profile.id)
       .in("status", ["pending", "approved"])
@@ -86,10 +116,13 @@ export default function DashboardPage() {
         shares_wanted: joinSharesWanted,
       });
       if (error) {
+        console.error("[join_requests insert error]", error);
         if (error.message?.includes("max_pending_requests_reached")) {
           toast.error(locale === "en"
             ? "You have 5 active requests. Withdraw one before sending another."
             : "আপনার সর্বোচ্চ ৫টি সক্রিয় অনুরোধ আছে। একটি প্রত্যাহার করুন তারপর আবার চেষ্টা করুন।");
+        } else if (error.message?.includes("duplicate key") || error.code === "23505") {
+          toast.error(locale === "en" ? "You already sent a request for this listing." : "আপনি ইতিমধ্যে এই পোস্টে অনুরোধ পাঠিয়েছেন।");
         } else {
           toast.error(locale === "en" ? "Something went wrong. Try again." : "সমস্যা হয়েছে। আবার চেষ্টা করুন।");
         }
@@ -252,6 +285,45 @@ export default function DashboardPage() {
       toast.error(locale === "en" ? "Something went wrong." : "সমস্যা হয়েছে।");
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // ── Phase 6: Withdrawal
+  const handleWithdraw = async () => {
+    if (!withdrawConfirm || !profile) return;
+    setWithdrawSubmitting(true);
+    try {
+      const willIncurPenalty =
+        withdrawConfirm.status === "approved" &&
+        withdrawConfirm.approvedAt != null &&
+        Date.now() - new Date(withdrawConfirm.approvedAt).getTime() > 24 * 60 * 60 * 1000;
+
+      const { error } = await supabase
+        .from("join_requests")
+        .update({ status: "withdrawn" })
+        .eq("id", withdrawConfirm.id);
+      if (error) throw error;
+
+      if (willIncurPenalty) {
+        const newCount = (profile.penalty_count || 0) + 1;
+        const updates: any = { penalty_count: newCount };
+        if (newCount >= 5) updates.is_banned = true;
+        await supabase.from("profiles").update(updates).eq("id", profile.id);
+        setProfile((prev: any) => ({ ...prev, ...updates }));
+        if (updates.is_banned) {
+          toast.error(locale === "en"
+            ? "Your account has been suspended after 5 penalties."
+            : "৫টি পেনাল্টির পর আপনার অ্যাকাউন্ট স্থগিত হয়েছে।");
+        }
+      }
+
+      toast.success(locale === "en" ? "Request withdrawn." : "অনুরোধ প্রত্যাহার করা হয়েছে।");
+      setWithdrawConfirm(null);
+      setMyJoinRequest(null);
+    } catch {
+      toast.error(locale === "en" ? "Something went wrong." : "সমস্যা হয়েছে।");
+    } finally {
+      setWithdrawSubmitting(false);
     }
   };
 
@@ -507,25 +579,66 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Phase 6b: Ban Banner ─────────────────────────────────────────── */}
+      {profile?.is_banned && (
+        <div className="px-4 lg:px-6 pt-3">
+          <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-start gap-3">
+            <span className="text-xl flex-shrink-0">⛔</span>
+            <div>
+              <p className="font-bold text-red-700 text-sm">
+                {locale === "en" ? "Your account has been suspended." : "আপনার অ্যাকাউন্ট স্থগিত করা হয়েছে।"}
+              </p>
+              <p className="text-xs text-red-600 mt-0.5">
+                {locale === "en"
+                  ? "You have received 5 penalties and cannot send new join requests. Please contact support."
+                  : "৫টি পেনাল্টি অর্জন করায় আপনি নতুন শেয়ার অনুরোধ করতে পারবেন না। সহায়তার জন্য যোগাযোগ করুন।"}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Pending Join Requests — owner management */}
       {(pendingLoading || pendingJoinRequests.length > 0) && (
         <div className="px-4 lg:px-6 pt-4 lg:pt-6">
-          <h2 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-            <UserPlus className="w-4 h-4 text-amber-500" />
-            {locale === "en" ? "Join Requests" : "যোগ দেওয়ার অনুরোধ"}
-            <span className="ml-auto bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">
-              {pendingJoinRequests.length}
-            </span>
-          </h2>
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <UserPlus className="w-4 h-4 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-sm font-bold text-text-primary">
+                {locale === "en" ? "Join Requests" : "যোগ দেওয়ার অনুরোধ"}
+              </h2>
+              {!pendingLoading && (
+                <p className="text-[10px] text-text-muted">
+                  {pendingJoinRequests.length} {locale === "en" ? "pending" : "অপেক্ষায়"}
+                </p>
+              )}
+            </div>
+            {!pendingLoading && (
+              <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200">
+                {pendingJoinRequests.length}
+              </span>
+            )}
+          </div>
           {pendingLoading ? (
             <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
               {[1, 2].map(i => (
-                <div key={i} className="flex-shrink-0 w-72 bg-white border border-border rounded-2xl p-4 animate-pulse">
-                  <div className="w-24 h-4 bg-background rounded mb-3" />
-                  <div className="w-40 h-4 bg-background rounded mb-2" />
-                  <div className="flex gap-2 mt-4">
-                    <div className="flex-1 h-9 bg-background rounded-xl" />
-                    <div className="flex-1 h-9 bg-background rounded-xl" />
+                <div key={i} className="flex-shrink-0 w-72 bg-white border border-border rounded-2xl overflow-hidden animate-pulse">
+                  <div className="h-0.5 bg-border" />
+                  <div className="p-4">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-11 h-11 bg-background rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <div className="w-28 h-3.5 bg-background rounded-lg" />
+                        <div className="w-20 h-3 bg-background rounded-lg" />
+                      </div>
+                    </div>
+                    <div className="h-14 bg-background rounded-xl mb-4" />
+                    <div className="flex gap-2">
+                      <div className="flex-1 h-9 bg-background rounded-xl" />
+                      <div className="flex-1 h-9 bg-background rounded-xl" />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -533,45 +646,55 @@ export default function DashboardPage() {
           ) : (
             <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar lg:grid lg:grid-cols-3 lg:overflow-visible">
               {pendingJoinRequests.map((jr) => (
-                <div key={jr.id} className="flex-shrink-0 w-72 lg:w-auto bg-white border border-amber-200 rounded-2xl p-4 shadow-sm">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-bold text-primary">
-                        {jr.requester?.full_name?.[0] || "?"}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-text-primary text-sm truncate">
-                        {jr.requester?.full_name || (locale === "en" ? "Unknown" : "অজানা")}
-                      </p>
-                      {(jr.requester?.penalty_count ?? 0) > 0 ? (
-                        <p className="text-xs text-amber-600 font-semibold">
-                          ⚠️ {jr.requester.penalty_count} {locale === "en" ? "penalty(ies)" : "পেনাল্টি"}
+                <div key={jr.id} className="flex-shrink-0 w-72 lg:w-auto bg-white rounded-2xl overflow-hidden shadow-sm border border-border/60">
+                  <div className="h-0.5 bg-amber-400" />
+                  <div className="p-4">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-amber-100 to-orange-50 border-2 border-amber-200">
+                        <span className="text-sm font-bold text-amber-700">
+                          {jr.requester?.full_name?.[0] || "?"}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-text-primary text-sm truncate">
+                          {jr.requester?.full_name || (locale === "en" ? "Unknown" : "অজানা")}
                         </p>
-                      ) : null}
+                        {(jr.requester?.penalty_count ?? 0) > 0 ? (
+                          <p className="text-[10px] text-amber-600 font-semibold flex items-center gap-0.5 mt-0.5">
+                            <AlertTriangle className="w-3 h-3" />
+                            {jr.requester.penalty_count} {locale === "en" ? "penalty(ies)" : "পেনাল্টি"}
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-green-600 font-medium mt-0.5">
+                            {locale === "en" ? "✓ No penalties" : "✓ কোনো পেনাল্টি নেই"}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-xs text-text-muted mb-1">
-                    {locale === "en" ? "Post" : "পোস্ট"}: {jr.post?.area_name?.split(",")[0] || "—"}
-                  </p>
-                  <p className="text-xs font-semibold text-text-primary mb-4">
-                    {locale === "en"
-                      ? `${jr.shares_wanted} share(s) wanted`
-                      : `${jr.shares_wanted}টি শেয়ার চাওয়া হয়েছে`}
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setRejectConfirm(jr)}
-                      className="flex-1 py-2 border-2 border-error/40 text-error rounded-xl text-xs font-bold hover:bg-error/5 active:scale-95 transition-all"
-                    >
-                      {locale === "en" ? "Reject" : "প্রত্যাখ্যান করুন"}
-                    </button>
-                    <button
-                      onClick={() => setApproveConfirm(jr)}
-                      className="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-opacity-90 active:scale-95 transition-all"
-                    >
-                      {locale === "en" ? "Approve" : "অনুমোদন করুন"}
-                    </button>
+                    <div className="bg-amber-50/70 rounded-xl px-3 py-2.5 mb-4 border border-amber-100">
+                      <p className="text-[10px] text-text-muted mb-0.5">
+                        {locale === "en" ? "Post" : "পোস্ট"}: <span className="font-semibold text-text-secondary">{jr.post?.area_name?.split(",")[0] || "—"}</span>
+                      </p>
+                      <p className="text-sm font-bold text-text-primary">
+                        {locale === "en"
+                          ? `${jr.shares_wanted} share${jr.shares_wanted !== 1 ? "s" : ""} wanted`
+                          : `${jr.shares_wanted}টি শেয়ার চাওয়া হয়েছে`}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setRejectConfirm(jr)}
+                        className="flex-1 py-2.5 border border-error/40 text-error rounded-xl text-xs font-bold hover:bg-error/5 active:scale-95 transition-all"
+                      >
+                        {locale === "en" ? "Reject" : "প্রত্যাখ্যান"}
+                      </button>
+                      <button
+                        onClick={() => setApproveConfirm(jr)}
+                        className="flex-1 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-light active:scale-95 transition-all shadow-sm shadow-primary/20"
+                      >
+                        {locale === "en" ? "Approve" : "অনুমোদন"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -588,8 +711,7 @@ export default function DashboardPage() {
             userPos={[profile.latitude, profile.longitude]}
             requests={allRequests}
             onMarkerClick={(req) => {
-              setSelectedRequest(req);
-              setMapCenter([req.latitude, req.longitude]);
+              handleCardClick(req);
             }}
           />
         )}
@@ -602,10 +724,26 @@ export default function DashboardPage() {
 
       {/* Nearby Listings */}
       <div className="p-4 lg:px-6 lg:py-6 overflow-hidden lg:overflow-visible">
-        <h2 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-          <Image src="/images/cow.png" alt="" width={16} height={16} className="object-contain" />
-          {td("nearby")}
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Image src="/images/cow.png" alt="" width={18} height={18} className="object-contain" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-text-primary">{td("nearby")}</h2>
+              {!loading && (
+                <p className="text-[10px] text-text-muted">
+                  {nearbyRequests.length} {locale === "en" ? "found nearby" : "কাছে পাওয়া গেছে"}
+                </p>
+              )}
+            </div>
+          </div>
+          {!loading && nearbyRequests.length > 0 && (
+            <span className="text-[10px] font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/15">
+              {nearbyRequests.length}
+            </span>
+          )}
+        </div>
 
         {/* Mobile: horizontal scroll */}
         <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar lg:hidden">
@@ -639,6 +777,70 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Explore Other Areas */}
+      {!loading && groupedOtherRequests.length > 0 && (
+        <div className="px-4 lg:px-6 pb-6 space-y-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Navigation className="w-4 h-4 text-accent" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-text-primary">
+                {locale === "en" ? "Explore Other Areas" : "অন্য এলাকা দেখুন"}
+              </h2>
+              <p className="text-[10px] text-text-muted">
+                {otherRequests.length} {locale === "en" ? "requests in other areas" : "টি অনুরোধ অন্য এলাকায়"}
+              </p>
+            </div>
+          </div>
+
+          {groupedOtherRequests.map(([area, requests]) => {
+            const isExpanded = expandedAreas.has(area);
+            const visible = isExpanded ? requests : requests.slice(0, 5);
+            return (
+              <div key={area} className="bg-white rounded-2xl border border-border/60 overflow-hidden">
+                {/* Area header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                    <span className="text-sm font-bold text-text-primary">{area}</span>
+                    <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-full border border-accent/20">
+                      {requests.length}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Cards — mobile horizontal scroll, desktop grid */}
+                <div className="p-3">
+                  <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar lg:hidden">
+                    {visible.map(req => (
+                      <RequestCard key={req.id} request={req} onClick={() => handleCardClick(req)} />
+                    ))}
+                  </div>
+                  <div className="hidden lg:grid lg:grid-cols-4 gap-3">
+                    {visible.map(req => (
+                      <RequestCard key={req.id} request={req} className="" onClick={() => handleCardClick(req)} />
+                    ))}
+                  </div>
+
+                  {requests.length > 5 && (
+                    <button
+                      onClick={() => toggleArea(area)}
+                      className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-bold text-accent hover:text-accent/80 py-2 border border-accent/20 rounded-xl hover:bg-accent/5 active:scale-95 transition-all"
+                    >
+                      {isExpanded
+                        ? (locale === "en" ? "Show less" : "কম দেখুন")
+                        : (locale === "en" ? `See all ${requests.length}` : `সব ${requests.length}টি দেখুন`)}
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* FAB — mobile only */}
       <div className="absolute bottom-24 right-4 z-20 lg:hidden">
@@ -736,6 +938,56 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* ── Phase 6a: Withdraw Confirm Dialog ─────────────────────────────── */}
+      {withdrawConfirm && (() => {
+        const willIncurPenalty =
+          withdrawConfirm.status === "approved" &&
+          withdrawConfirm.approvedAt != null &&
+          Date.now() - new Date(withdrawConfirm.approvedAt).getTime() > 24 * 60 * 60 * 1000;
+        const penaltyCount = (profile?.penalty_count || 0) + 1;
+
+        return (
+          <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${willIncurPenalty ? "bg-amber-100" : "bg-background"}`}>
+                <AlertTriangle className={`w-7 h-7 ${willIncurPenalty ? "text-amber-600" : "text-text-muted"}`} />
+              </div>
+              <h3 className="text-lg font-bold text-center mb-2">
+                {locale === "en" ? "Withdraw Request?" : "অনুরোধ প্রত্যাহার করবেন?"}
+              </h3>
+              <p className="text-sm text-text-muted text-center mb-4">
+                {willIncurPenalty
+                  ? (locale === "en"
+                    ? `⚠️ Warning: 24H has passed. Withdrawing will add 1 penalty to your account. (${penaltyCount}/5)`
+                    : `⚠️ সতর্কতা: ২৪ ঘণ্টা পার হয়েছে। প্রত্যাহার করলে আপনার অ্যাকাউন্টে ১টি পেনাল্টি যোগ হবে। (${penaltyCount}/৫)`)
+                  : withdrawConfirm.status === "approved"
+                    ? (locale === "en"
+                      ? "Withdrawing within 24H of approval — no penalty."
+                      : "অনুমোদনের ২৪ ঘণ্টার মধ্যে প্রত্যাহার করলে পেনাল্টি হবে না।")
+                    : (locale === "en"
+                      ? "Confirm withdrawal? No penalty will be applied."
+                      : "নিশ্চিতভাবে প্রত্যাহার করবেন? কোনো পেনাল্টি হবে না।")}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setWithdrawConfirm(null)}
+                  className="flex-1 py-3 border-2 border-border rounded-xl font-bold text-text-muted hover:bg-background transition-all active:scale-95"
+                >
+                  {locale === "en" ? "Cancel" : "বাতিল"}
+                </button>
+                <button
+                  onClick={handleWithdraw}
+                  disabled={withdrawSubmitting}
+                  className="flex-1 py-3 rounded-xl font-bold text-white bg-error hover:bg-opacity-90 transition-all active:scale-95 disabled:opacity-60"
+                >
+                  {withdrawSubmitting ? "…" : (locale === "en" ? "Withdraw" : "প্রত্যাহার করুন")}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Join Modal */}
       {showJoinModal && selectedRequest && (
         <div className="fixed inset-0 z-[10000] flex items-end justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -787,36 +1039,37 @@ export default function DashboardPage() {
           <div className="absolute bottom-0 inset-x-0 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-[512px] bg-white rounded-t-[2.5rem] shadow-2xl animate-in slide-in-from-bottom duration-300 pointer-events-auto max-h-[85vh] flex flex-col">
             <div className="w-12 h-1.5 bg-border rounded-full mx-auto my-4 flex-shrink-0" />
             <div className="overflow-y-auto px-6 pt-2 pb-8">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center border-2 border-primary/20">
-                  <span className="text-2xl font-bold text-primary">
+              <div className="flex items-start gap-3 mb-6">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center border-2 border-primary/20 flex-shrink-0">
+                  <span className="text-lg font-bold text-primary">
                     {!selectedRequest.hide_name && selectedRequest.full_name ? selectedRequest.full_name[0] : "?"}
                   </span>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-text-primary">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-bold text-text-primary truncate">
                     {!selectedRequest.hide_name && selectedRequest.full_name ? selectedRequest.full_name : tm("anonymous")}
                   </h3>
-                  <div className="flex items-center gap-1 text-text-muted text-sm">
-                    <MapPin className="w-4 h-4" />
-                    {selectedRequest.area_name}
-                    <span className="mx-1">•</span>
-                    <Clock className="w-3.5 h-3.5" />
-                    {formatDistanceToNow(new Date(selectedRequest.created_at))} ago
+                  <div className="flex items-center gap-1 text-text-muted text-xs mt-0.5">
+                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{selectedRequest.area_name?.split(",")[0]}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-text-muted text-xs mt-0.5">
+                    <Clock className="w-3 h-3 flex-shrink-0" />
+                    <span>{formatDistanceToNow(new Date(selectedRequest.created_at))} ago</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setSelectedRequest(null)}
-                  className="ml-auto p-2 bg-background rounded-full"
+                  className="p-2 bg-background rounded-full flex-shrink-0"
                 >
-                  <X className="w-5 h-5 text-text-muted" />
+                  <X className="w-4 h-4 text-text-muted" />
                 </button>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-8">
                 <InfoItem
                   label={tm("shares_wanted")}
-                  value={<ShareBoxes count={selectedRequest.shares_wanted} />}
+                  value={<ShareBoxes count={selectedRequest.shares_wanted} filled={selectedRequest.shares_filled ?? selectedRequest.shares_wanted} />}
                 />
                 <InfoItem
                   label={tm("budget")}
@@ -894,7 +1147,7 @@ export default function DashboardPage() {
                 // Joinable post
                 return (
                   <div className="flex flex-col gap-3 mb-6">
-                    <ShareProgress filled={sharesFilled} />
+                    <ShareProgress filled={sharesFilled} locale={locale} />
 
                     {isOwnListing ? (
                       <div className="w-full py-3 rounded-2xl bg-background border border-dashed border-border flex items-center justify-center gap-2 text-text-muted text-sm">
@@ -915,6 +1168,17 @@ export default function DashboardPage() {
                               <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
                               {locale === "en" ? "Approved" : "অনুমোদিত হয়েছে"}
                             </div>
+                            <button
+                              onClick={() => setWithdrawConfirm({
+                                id: myJoinRequest.id,
+                                status: "approved",
+                                approvedAt: myJoinRequest.approved_at,
+                                sharesWanted: myJoinRequest.shares_wanted,
+                              })}
+                              className="w-full py-2.5 rounded-2xl border border-border text-text-muted text-xs font-semibold hover:border-error hover:text-error hover:bg-red-50 active:scale-95 transition-all"
+                            >
+                              {locale === "en" ? "Withdraw" : "প্রত্যাহার করুন"}
+                            </button>
                             {!!(selectedRequest.whatsapp_number || selectedRequest.phone_number) && (
                               <div className="grid grid-cols-2 gap-3">
                                 <a
@@ -939,9 +1203,21 @@ export default function DashboardPage() {
                         )}
 
                         {myJoinRequest?.status === "pending" && (
-                          <div className="w-full py-3 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center gap-2 text-amber-700 text-sm font-bold">
-                            <Clock className="w-4 h-4 flex-shrink-0" />
-                            {locale === "en" ? "Request sent — awaiting approval" : "অনুরোধ পাঠানো হয়েছে — অপেক্ষায় আছে"}
+                          <div className="flex flex-col gap-2">
+                            <div className="w-full py-3 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center gap-2 text-amber-700 text-sm font-bold">
+                              <Clock className="w-4 h-4 flex-shrink-0" />
+                              {locale === "en" ? "Request sent — awaiting approval" : "অনুরোধ পাঠানো হয়েছে — অপেক্ষায় আছে"}
+                            </div>
+                            <button
+                              onClick={() => setWithdrawConfirm({
+                                id: myJoinRequest.id,
+                                status: "pending",
+                                sharesWanted: myJoinRequest.shares_wanted,
+                              })}
+                              className="w-full py-2.5 rounded-2xl border border-border text-text-muted text-xs font-semibold hover:border-error hover:text-error hover:bg-red-50 active:scale-95 transition-all"
+                            >
+                              {locale === "en" ? "Withdraw Request" : "অনুরোধ প্রত্যাহার করুন"}
+                            </button>
                           </div>
                         )}
 
@@ -1056,7 +1332,6 @@ function NotificationItem({ notif, locale, onNavigate }: any) {
   const { formatDistanceToNow } = require("date-fns");
   const jr = notif.join_requests;
   const requesterName = jr?.requester?.full_name || (locale === "en" ? "Someone" : "কেউ");
-  const sharesWanted = jr?.shares_wanted ?? "?";
   const areaName = jr?.share_requests?.area_name?.split(",")[0] || "";
   const requestId = jr?.request_id;
 
@@ -1142,74 +1417,128 @@ function RequestCard({ request, onClick, className = "flex-shrink-0 w-64 sm:w-72
   const tm = useTranslations("map_page");
   const locale = useLocale();
   const sharesFilled = request.shares_filled ?? request.shares_wanted;
+  const remaining = Math.max(0, 7 - sharesFilled);
+  const isFull = remaining === 0;
 
   return (
     <div
       onClick={onClick}
-      className={`${className} bg-white border border-border rounded-2xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer`}
+      className={`${className} relative bg-white rounded-2xl overflow-hidden border border-border/60 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group`}
     >
-      <div className="flex justify-between items-start mb-3">
-        <div className="bg-primary/10 text-primary px-2 py-1 rounded-lg text-[10px] font-bold uppercase">
-          {request.area_name?.split(",")[0] || "Area"}
+      {/* Top accent */}
+      <div className={`h-0.5 w-full ${isFull ? "bg-accent" : "bg-primary"}`} />
+
+      <div className="p-4 space-y-3">
+        {/* Header: area + time */}
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-lg">
+            {request.area_name?.split(",")[0] || "Area"}
+          </span>
+          <span className="flex items-center gap-1 text-[10px] text-text-muted">
+            <Clock className="w-3 h-3" />
+            {formatDistanceToNow(new Date(request.created_at))} ago
+          </span>
         </div>
-        <div className="flex items-center gap-1 text-text-muted text-[10px]">
-          <Clock className="w-3 h-3" />
-          {formatDistanceToNow(new Date(request.created_at))} ago
-        </div>
-      </div>
-      <div className="mb-3">
-        <p className="text-xs text-text-muted mb-1">{tm("shares_wanted")}</p>
-        <ShareBoxes count={request.shares_wanted} mini />
-      </div>
-      {request.is_joinable && (
-        <div className="mb-3">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-[10px] text-text-muted">{locale === "en" ? "Filled" : "পূর্ণ"}</span>
-            <span className="text-[10px] font-bold text-primary">{sharesFilled}/7</span>
-          </div>
-          <div className="h-1.5 bg-border/40 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full"
-              style={{ width: `${Math.min(100, Math.round((sharesFilled / 7) * 100))}%` }}
-            />
-          </div>
-        </div>
-      )}
-      <div className="flex items-center justify-between mt-4">
+
+        {/* Share segments */}
         <div>
-          <p className="text-[10px] text-text-muted uppercase">{tm("budget")}</p>
-          <p className="text-sm font-bold text-text-primary">
-            {request.budget ? `৳${request.budget.toLocaleString()}` : "--"}
-          </p>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-text-muted">
+              {tm("shares_wanted")}
+            </span>
+            {request.is_joinable && (
+              <span className="text-[10px] font-bold text-primary tabular-nums">
+                {sharesFilled}<span className="text-text-muted font-normal">/7</span>
+              </span>
+            )}
+          </div>
+          <div className="flex gap-[3px]">
+            {Array.from({ length: 7 }).map((_, i) => {
+              let color = "bg-border/50";
+              if (i < request.shares_wanted) {
+                color = "bg-primary"; // owner's own shares
+              } else if (request.is_joinable && i < sharesFilled) {
+                color = "bg-accent"; // approved joiner shares
+              }
+              return <div key={i} className={`flex-1 h-[5px] rounded-full transition-colors ${color}`} />;
+            })}
+          </div>
         </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (request.hide_phone) {
-              router.push(`/messages/${request.id}/${request.user_id}`);
-            } else {
-              window.open(`https://wa.me/88${request.whatsapp_number || request.phone_number}`, "_blank");
+
+        {/* Availability badge */}
+        {request.is_joinable && (
+          <div>
+            {isFull ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-accent/10 text-accent border border-accent/20">
+                {locale === "en" ? "Fully booked" : "সব ভাগ পূর্ণ"}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                {locale === "en" ? `${remaining} open` : `${remaining}টি খালি`}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Footer: budget + action */}
+        <div className="flex items-end justify-between pt-2 border-t border-border/40">
+          <div>
+            <p className="text-[10px] text-text-muted uppercase tracking-wide mb-0.5">{tm("budget")}</p>
+            <p className="text-sm font-bold text-text-primary">
+              {request.budget ? `৳${request.budget.toLocaleString()}` : "—"}
+            </p>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (request.hide_phone) {
+                router.push(`/messages/${request.id}/${request.user_id}`);
+              } else {
+                window.open(`https://wa.me/88${request.whatsapp_number || request.phone_number}`, "_blank");
+              }
+            }}
+            className="flex items-center gap-1.5 bg-primary text-white px-3 py-2 rounded-xl text-[11px] font-bold group-hover:bg-primary-light active:scale-95 transition-all shadow-sm shadow-primary/20"
+          >
+            {request.hide_phone
+              ? <><MessageCircle className="w-3.5 h-3.5" /> {locale === "en" ? "Chat" : "চ্যাট"}</>
+              : <><MessageSquare className="w-3.5 h-3.5" /> {locale === "en" ? "Chat" : "চ্যাট"}</>
             }
-          }}
-          className="bg-primary text-white p-2 rounded-xl active:scale-95 transition-all"
-        >
-          {request.hide_phone ? <MessageCircle className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
-        </button>
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-function ShareBoxes({ count, mini = false }: { count: number, mini?: boolean }) {
+function ShareBoxes({ count, filled, mini = false }: { count: number, filled?: number, mini?: boolean }) {
+  const locale = useLocale();
   return (
     <div className="flex gap-1">
-      {Array.from({ length: 7 }).map((_, i) => (
-        <div
-          key={i}
-          className={`rounded-sm ${mini ? "w-2.5 h-2.5" : "w-4 h-4"} ${i < count ? "bg-primary shadow-sm" : "bg-border/50"
-            }`}
-        />
-      ))}
+      {Array.from({ length: 7 }).map((_, i) => {
+        let cls = "bg-border/50";
+        let tip = locale === "en" ? "Available" : "খালি";
+        if (i < count) {
+          cls = "bg-primary shadow-sm";
+          tip = locale === "en" ? "Claimed by owner" : "মালিক দাবি করেছেন";
+        } else if (filled !== undefined && i < filled) {
+          cls = "bg-accent shadow-sm";
+          tip = locale === "en" ? "Claimed by others, approved by owner" : "অন্যরা নিয়েছেন, মালিক অনুমোদিত";
+        }
+        return (
+          <div key={i} className="relative group/box">
+            <div className={`rounded-sm cursor-default ${mini ? "w-2.5 h-2.5" : "w-4 h-4"} ${cls}`} />
+            {!mini && (
+              <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50
+                              whitespace-nowrap bg-gray-900 text-white text-[10px] font-medium px-2 py-1 rounded-md
+                              opacity-0 group-hover/box:opacity-100 transition-opacity duration-150">
+                {tip}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1223,32 +1552,65 @@ function InfoItem({ label, value }: any) {
   );
 }
 
-function ShareProgress({ filled }: { filled: number }) {
+function ShareProgress({ filled, locale }: { filled: number; locale?: string }) {
   const pct = Math.min(100, Math.round((filled / 7) * 100));
+  const remaining = Math.max(0, 7 - filled);
+  const isFull = filled >= 7;
   return (
-    <div>
-      <div className="flex justify-between items-center mb-1">
-        <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">Shares</span>
+    <div className="bg-background rounded-2xl p-3">
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">
+          {locale === "en" ? "Shares" : "শেয়ার"}
+        </span>
         <span className="text-xs font-bold text-primary">{filled}/7</span>
       </div>
-      <div className="h-2 bg-border/40 rounded-full overflow-hidden">
+      <div className="h-2 bg-border/40 rounded-full overflow-hidden mb-2">
         <div
-          className={`h-full rounded-full transition-all ${filled >= 7 ? "bg-accent" : "bg-primary"}`}
+          className={`h-full rounded-full transition-all ${isFull ? "bg-accent" : "bg-primary"}`}
           style={{ width: `${pct}%` }}
         />
       </div>
+      {isFull ? (
+        <span className="inline-flex items-center gap-1 bg-accent/10 text-accent text-xs font-bold px-2.5 py-1 rounded-full">
+          {locale === "en" ? "Fully booked" : "পূর্ণ হয়ে গেছে"}
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-bold px-2.5 py-1 rounded-full">
+          {locale === "en" ? `${remaining} slot${remaining !== 1 ? "s" : ""} remaining` : `${remaining}টি শেয়ার খালি আছে`}
+        </span>
+      )}
     </div>
   );
 }
 
 function SkeletonCard({ className = "flex-shrink-0 w-64" }: { className?: string }) {
   return (
-    <div className={`${className} bg-white border border-border rounded-2xl p-4 animate-pulse`}>
-      <div className="w-20 h-4 bg-background rounded-lg mb-3" />
-      <div className="w-full h-8 bg-background rounded-lg mb-3" />
-      <div className="flex justify-between items-center mt-4">
-        <div className="w-20 h-4 bg-background rounded-lg" />
-        <div className="w-8 h-8 bg-background rounded-xl" />
+    <div className={`${className} bg-white border border-border/60 rounded-2xl overflow-hidden animate-pulse`}>
+      <div className="h-0.5 bg-border" />
+      <div className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="w-20 h-6 bg-background rounded-lg" />
+          <div className="w-16 h-4 bg-background rounded-lg" />
+        </div>
+        <div className="space-y-1.5">
+          <div className="flex justify-between">
+            <div className="w-16 h-3 bg-background rounded" />
+            <div className="w-8 h-3 bg-background rounded" />
+          </div>
+          <div className="flex gap-[3px]">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="flex-1 h-[5px] bg-background rounded-full" />
+            ))}
+          </div>
+        </div>
+        <div className="w-20 h-5 bg-background rounded-full" />
+        <div className="flex items-end justify-between pt-2 border-t border-border/40">
+          <div className="space-y-1">
+            <div className="w-12 h-3 bg-background rounded" />
+            <div className="w-20 h-4 bg-background rounded" />
+          </div>
+          <div className="w-16 h-8 bg-background rounded-xl" />
+        </div>
       </div>
     </div>
   );

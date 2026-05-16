@@ -11,7 +11,7 @@ import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 const LeafletMap = dynamic(() => import("@/components/map/LeafletMap"), {
   ssr: false,
@@ -29,7 +29,9 @@ export default function EditRequestPage() {
   const { id } = useParams();
   const t = useTranslations("post");
   const tc = useTranslations("common");
+  const locale = useLocale();
   const [loading, setLoading] = useState(true);
+  const [hasApprovedJoiners, setHasApprovedJoiners] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -84,7 +86,17 @@ export default function EditRequestPage() {
       setPhone(request.phone_number || "");
       setHideName(request.hide_name || false);
       setHidePhone(request.hide_phone || false);
-      
+
+      // Phase 7: check for approved joiners — locks shares_wanted if any exist
+      if (request.is_joinable) {
+        const { count } = await supabase
+          .from("join_requests")
+          .select("*", { count: "exact", head: true })
+          .eq("request_id", id as string)
+          .eq("status", "approved");
+        setHasApprovedJoiners((count ?? 0) > 0);
+      }
+
       setLoading(false);
     }
     fetchData();
@@ -171,28 +183,41 @@ export default function EditRequestPage() {
           className="max-w-xl mx-auto lg:max-w-none p-4 lg:p-0 space-y-6 mt-4 lg:mt-0 pb-28 lg:pb-0"
         >
           {/* Field 1: Shares Wanted */}
-          <div className="bg-white p-6 rounded-2xl border border-border shadow-sm">
+          <div className={`bg-white p-6 rounded-2xl border shadow-sm ${hasApprovedJoiners ? "border-amber-200" : "border-border"}`}>
             <label className="block text-sm font-bold text-text-primary mb-1 uppercase tracking-wider">
               {t("shares_label")}
             </label>
+            {hasApprovedJoiners && (
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 mt-3 mb-2 text-xs text-amber-700 font-medium">
+                <span className="flex-shrink-0 mt-0.5">⚠️</span>
+                <span>
+                  {locale === "en"
+                    ? "This post has approved members. Share count cannot be changed."
+                    : "এই পোস্টে অনুমোদিত সদস্য আছেন। শেয়ার সংখ্যা পরিবর্তন করা যাবে না।"}
+                </span>
+              </div>
+            )}
             <div className="flex gap-2 my-6 justify-between">
               {Array.from({ length: 7 }).map((_, i) => {
                 const shareNum = i + 1;
                 const isLast = shareNum === 7;
                 const isSelected = shareNum <= sharesWanted;
+                const isLocked = hasApprovedJoiners && !isLast;
 
                 return (
                   <div key={shareNum} className="flex flex-col items-center gap-2">
                     <button
                       type="button"
-                      disabled={isLast}
-                      onClick={() => setSharesWanted(shareNum)}
+                      disabled={isLast || isLocked}
+                      onClick={() => !isLocked && setSharesWanted(shareNum)}
                       className={`w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center active:scale-95 ${
                         isLast
                           ? "border-accent bg-accent/10 text-accent cursor-not-allowed"
-                          : isSelected
-                            ? "border-primary bg-primary text-white shadow-md shadow-primary/20"
-                            : "border-border bg-white text-text-muted hover:border-primary/50"
+                          : isLocked
+                            ? "border-border bg-background text-text-muted cursor-not-allowed opacity-60"
+                            : isSelected
+                              ? "border-primary bg-primary text-white shadow-md shadow-primary/20"
+                              : "border-border bg-white text-text-muted hover:border-primary/50"
                       }`}
                     >
                       {isLast ? <Lock className="w-5 h-5" /> : shareNum}
