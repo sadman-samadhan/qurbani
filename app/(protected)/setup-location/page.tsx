@@ -137,6 +137,9 @@ export default function SetupLocationPage() {
       if (error) throw error;
 
       toast.success(t("saved"));
+      if (!profileLocation) {
+        localStorage.setItem("qs_tour_pending", "1");
+      }
       router.push(redirect);
     } catch (err: any) {
       toast.error(err.message || "Error saving location");
